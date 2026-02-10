@@ -54,20 +54,38 @@ export default function Onboarding() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
-    if (isScanning) {
-      const scanner = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        /* verbose= */ false
-      );
+    let timeoutId: NodeJS.Timeout;
 
-      scanner.render(onScanSuccess, onScanFailure);
-      scannerRef.current = scanner;
+    if (isScanning) {
+      // Aggiungiamo un piccolo ritardo per assicurarci che il Dialog e il div #reader siano montati
+      timeoutId = setTimeout(() => {
+        const readerElement = document.getElementById("reader");
+        if (readerElement) {
+          try {
+            const scanner = new Html5QrcodeScanner(
+              "reader",
+              { fps: 10, qrbox: { width: 250, height: 150 } },
+              /* verbose= */ false
+            );
+
+            scanner.render(onScanSuccess, onScanFailure);
+            scannerRef.current = scanner;
+          } catch (err) {
+            console.error("Errore durante l'inizializzazione dello scanner:", err);
+          }
+        }
+      }, 300);
     }
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
+        scannerRef.current.clear().catch((error) => {
+          // Ignoriamo l'errore se lo scanner è già stato rimosso o non trovato
+          if (!error?.message?.includes("id=reader")) {
+            console.error("Errore durante la pulizia dello scanner:", error);
+          }
+        });
         scannerRef.current = null;
       }
     };
@@ -276,7 +294,7 @@ export default function Onboarding() {
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="p-0 overflow-hidden sm:max-w-md border-none bg-black">
-                      <div className="relative">
+                      <div className="relative min-h-[300px] flex items-center justify-center">
                         <div id="reader" className="w-full"></div>
                         <Button 
                           variant="ghost" 
