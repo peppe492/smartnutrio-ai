@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import {
 } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
-  ChefHat, History, LayoutGrid, BarChart2, Utensils, 
+  History, LayoutGrid, BarChart2, Utensils, 
   Settings, Bell, Dumbbell, Droplets, Sparkles, MoreHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,11 +22,11 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
 import { manualEntryAiAssistance } from '@/ai/flows/manual-entry-ai-assistance';
+import Link from 'next/link';
 
 interface Meal {
   id: string;
@@ -55,15 +56,15 @@ export default function Dashboard() {
     },
     {
       id: '2',
-      name: 'Grilled Chicken Salad',
-      description: 'Insalata mediterranea, Olio d\'oliva',
+      name: 'Salmone al Forno',
+      description: 'Filetto di salmone con asparagi',
       calories: 630,
       macros: { protein: 42, carbs: 12, fat: 18 },
       time: '13:15',
-      image: 'https://picsum.photos/seed/salad/100/100'
+      image: 'https://picsum.photos/seed/salmon/100/100'
     }
   ]);
-  const [dailyGoal, setDailyGoal] = useState(2500);
+  const [dailyGoal] = useState(2500);
   const [waterIntake, setWaterIntake] = useState(1.2);
   const waterGoal = 2.5;
   
@@ -74,8 +75,6 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    const savedGoal = localStorage.getItem('nutrio_tdee_goal');
-    if (savedGoal) setDailyGoal(Number(savedGoal));
   }, []);
 
   const totals = useMemo(() => {
@@ -169,14 +168,14 @@ export default function Dashboard() {
         </div>
 
         <nav className="flex-1 space-y-2">
-          <SidebarLink icon={<LayoutGrid size={20} />} label="Dashboard" active />
-          <SidebarLink icon={<History size={20} />} label="Meal History" />
-          <SidebarLink icon={<BarChart2 size={20} />} label="Analytics" />
-          <SidebarLink icon={<Utensils size={20} />} label="Recipe AI" />
+          <SidebarLink icon={<LayoutGrid size={20} />} label="Dashboard" href="/dashboard" active />
+          <SidebarLink icon={<History size={20} />} label="Cronologia" href="/history" />
+          <SidebarLink icon={<BarChart2 size={20} />} label="Analisi" href="/dashboard" />
+          <SidebarLink icon={<Utensils size={20} />} label="Ricette AI" href="/dashboard" />
         </nav>
 
         <div className="space-y-4 pt-8 border-t">
-          <SidebarLink icon={<Settings size={20} />} label="Settings" />
+          <SidebarLink icon={<Settings size={20} />} label="Impostazioni" href="/dashboard" />
           <div className="bg-[#F8FAFC] rounded-2xl p-3 flex items-center gap-3">
             <Avatar className="w-10 h-10 border-2 border-white">
               <AvatarImage src="https://picsum.photos/seed/alex/100/100" />
@@ -240,16 +239,16 @@ export default function Dashboard() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center -mt-4">
                 <span className="text-4xl font-extrabold text-slate-900">{caloriesLeft.toLocaleString()}</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Left to Goal</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Rimanenti</span>
               </div>
             </div>
             <div className="flex justify-between w-full mt-4 px-4">
               <div className="flex flex-col items-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Consumed</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Consumate</span>
                 <span className="text-lg font-bold text-slate-900">{totals.calories} <span className="text-[10px] text-slate-400 font-medium">kcal</span></span>
               </div>
               <div className="flex flex-col items-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Daily Goal</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Obiettivo</span>
                 <span className="text-lg font-bold text-slate-900">{dailyGoal} <span className="text-[10px] text-slate-400 font-medium">kcal</span></span>
               </div>
             </div>
@@ -259,7 +258,7 @@ export default function Dashboard() {
           <div className="xl:col-span-3 flex flex-col gap-6">
             <MacroRow 
               icon={<Dumbbell className="text-blue-500" size={18} />} 
-              label="Protein" 
+              label="Proteine" 
               current={totals.protein} 
               goal={150} 
               color="bg-blue-500" 
@@ -267,7 +266,7 @@ export default function Dashboard() {
             />
             <MacroRow 
               icon={<Utensils className="text-yellow-500" size={18} />} 
-              label="Carbohydrates" 
+              label="Carboidrati" 
               current={totals.carbs} 
               goal={300} 
               color="bg-yellow-500" 
@@ -275,7 +274,7 @@ export default function Dashboard() {
             />
             <MacroRow 
               icon={<Droplets className="text-purple-500" size={18} />} 
-              label="Healthy Fats" 
+              label="Grassi" 
               current={totals.fat} 
               goal={80} 
               color="bg-purple-500" 
@@ -287,8 +286,8 @@ export default function Dashboard() {
         {/* Daily Meals Section */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Daily Meals</h2>
-            <Button variant="ghost" className="text-nutrio-mint font-bold hover:bg-nutrio-mint/10">View All <span className="ml-1">›</span></Button>
+            <h2 className="text-xl font-bold text-slate-900">Pasti di Oggi</h2>
+            <Button variant="ghost" className="text-nutrio-mint font-bold hover:bg-nutrio-mint/10">Vedi Tutti <span className="ml-1">›</span></Button>
           </div>
 
           <div className="space-y-6">
@@ -300,15 +299,15 @@ export default function Dashboard() {
               <div className="bg-white/50 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                 <Utensils className="text-slate-300" size={24} />
               </div>
-              <p className="text-slate-400 font-bold text-sm mb-2">No dinner logged yet</p>
-              <p className="text-slate-300 text-xs font-medium">Target for today: 2,500 kcal</p>
+              <p className="text-slate-400 font-bold text-sm mb-2">Nessun pasto registrato per stasera</p>
+              <p className="text-slate-300 text-xs font-medium">Obiettivo: 2,500 kcal</p>
               
               <div className="mt-6">
                 <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                   <DialogTrigger asChild>
                     <Button className="rounded-2xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-bold h-12 px-8 shadow-lg shadow-nutrio-mint/20 gap-2">
                       <Plus size={20} />
-                      ADD NEW MEAL
+                      AGGIUNGI PASTO
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none bg-white">
@@ -337,7 +336,7 @@ export default function Dashboard() {
                             <DialogTitle className="text-2xl font-bold text-center">Inserimento Manuale</DialogTitle>
                             <Input placeholder="Es: Pizza Margherita" className="h-14 rounded-2xl border-slate-200" value={manualInput} onChange={(e) => setManualInput(e.target.value)} />
                             <Button className="w-full h-14 rounded-2xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-bold shadow-md" onClick={handleManualEntry} disabled={isAnalyzing}>
-                              {isAnalyzing ? "Recupero..." : "Aggiungi"}
+                              {isAnalyzing ? "Analisi..." : "Aggiungi"}
                             </Button>
                           </div>
                         </TabsContent>
@@ -358,16 +357,16 @@ export default function Dashboard() {
           <Card className="border-none rounded-[28px] bg-[#E8FFF1] p-6 relative overflow-hidden">
             <div className="flex items-center gap-2 text-nutrio-mint mb-4">
               <Sparkles size={16} />
-              <span className="text-xs font-bold uppercase tracking-wider">Smart Advice</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Consiglio Smart</span>
             </div>
             <p className="text-sm font-medium text-slate-600 leading-relaxed">
-              Hai raggiunto il <span className="text-nutrio-mint font-bold">56% del tuo obiettivo proteico</span> per oggi. Prova ad aggiungere uno yogurt greco a cena per un finale equilibrato!
+              Hai raggiunto il <span className="text-nutrio-mint font-bold">56% del tuo obiettivo proteico</span> per oggi. Prova ad aggiungere uno yogurt greco a cena!
             </p>
           </Card>
         </section>
 
         <section className="mb-10">
-          <h3 className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mb-4">Water Intake</h3>
+          <h3 className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mb-4">Assunzione Acqua</h3>
           <div className="bg-white rounded-[24px] p-4 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
@@ -375,7 +374,7 @@ export default function Dashboard() {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-slate-900">{waterIntake}L</span>
-                <span className="text-[10px] text-slate-400 font-medium">OF {waterGoal}L GOAL</span>
+                <span className="text-[10px] text-slate-400 font-medium">DI {waterGoal}L</span>
               </div>
             </div>
             <Button size="icon" className="h-8 w-8 rounded-full bg-blue-500 hover:bg-blue-600" onClick={() => setWaterIntake(prev => Math.min(waterGoal, prev + 0.25))}>
@@ -392,7 +391,7 @@ export default function Dashboard() {
                 Sblocca l'analisi dettagliata dei nutrienti e il logging fotografico illimitato.
               </p>
               <Button className="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold rounded-2xl h-12">
-                Upgrade Now
+                Passa a Pro
               </Button>
             </div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-nutrio-mint/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
@@ -403,15 +402,15 @@ export default function Dashboard() {
   );
 }
 
-function SidebarLink({ icon, label, active = false }: { icon: React.ReactNode, label: string, active?: boolean }) {
+function SidebarLink({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
   return (
-    <button className={cn(
+    <Link href={href} className={cn(
       "w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm",
       active ? "sidebar-active text-nutrio-mint" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
     )}>
       <span className={active ? "text-nutrio-mint" : "text-slate-400"}>{icon}</span>
       {label}
-    </button>
+    </Link>
   );
 }
 

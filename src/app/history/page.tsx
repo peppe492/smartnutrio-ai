@@ -64,19 +64,19 @@ export default function HistoryPage() {
           <Link href="/dashboard" className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
             <LayoutGrid size={24} />
           </Link>
-          <button className="p-3 text-nutrio-mint bg-nutrio-mint/10 rounded-2xl">
+          <Link href="/history" className="p-3 text-nutrio-mint bg-nutrio-mint/10 rounded-2xl">
             <History size={24} />
-          </button>
-          <button className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
+          </Link>
+          <Link href="/dashboard" className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
             <BarChart2 size={24} />
-          </button>
-          <button className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
+          </Link>
+          <Link href="/dashboard" className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
             <Utensils size={24} />
-          </button>
+          </Link>
         </div>
-        <button className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
+        <Link href="/dashboard" className="p-3 text-slate-400 hover:text-nutrio-mint transition-colors">
           <Settings size={24} />
-        </button>
+        </Link>
       </nav>
 
       {/* Main Content */}
