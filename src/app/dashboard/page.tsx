@@ -10,7 +10,7 @@ import {
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, BarChart2, Utensils, 
-  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check
+  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
 import { manualEntryAiAssistance } from '@/ai/flows/manual-entry-ai-assistance';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface Meal {
@@ -43,6 +44,7 @@ interface Meal {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [date, setDate] = useState<Date>(new Date());
   const [meals, setMeals] = useState<Meal[]>([
     {
@@ -100,21 +102,12 @@ export default function Dashboard() {
     setIsAnalyzing(true);
     try {
       const result = await manualEntryAiAssistance({ foodEntry: manualInput });
-      const newMeal: Meal = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: result.food_name,
-        description: result.description || 'Pasto aggiunto manualmente',
-        calories: result.calories,
-        macros: {
-          protein: result.macros.protein_g,
-          carbs: result.macros.carbs_g,
-          fat: result.macros.fat_g,
-        },
-        time: format(new Date(), 'HH:mm'),
+      const analysisResult = {
+        ...result,
+        image: 'https://picsum.photos/seed/food-manual/800/600'
       };
-      setMeals([newMeal, ...meals]);
-      setManualInput("");
-      setIsAddModalOpen(false);
+      sessionStorage.setItem('last_meal_analysis', JSON.stringify(analysisResult));
+      router.push('/analysis');
     } catch (error) {
       console.error(error);
     } finally {
@@ -132,21 +125,12 @@ export default function Dashboard() {
       const base64String = reader.result as string;
       try {
         const result = await analyzeFoodImage({ foodPhotoDataUri: base64String });
-        const newMeal: Meal = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: result.food_name,
-          description: result.description,
-          calories: result.calories,
-          macros: {
-            protein: result.macros.protein_g,
-            carbs: result.macros.carbs_g,
-            fat: result.macros.fat_g,
-          },
-          time: format(new Date(), 'HH:mm'),
+        const analysisResult = {
+          ...result,
           image: base64String
         };
-        setMeals([newMeal, ...meals]);
-        setIsAddModalOpen(false);
+        sessionStorage.setItem('last_meal_analysis', JSON.stringify(analysisResult));
+        router.push('/analysis');
       } catch (error) {
         console.error(error);
       } finally {
@@ -180,20 +164,35 @@ export default function Dashboard() {
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 bg-nutrio-mint rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
-            <Utensils className="w-6 h-6" />
+            <Zap className="w-6 h-6 fill-current" />
           </div>
           <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio<span className="text-nutrio-mint">.</span></span>
         </div>
 
         <nav className="flex-1 space-y-2">
-          <SidebarLink icon={<LayoutGrid size={20} />} label="Dashboard" href="/dashboard" active />
-          <SidebarLink icon={<History size={20} />} label="Cronologia" href="/history" />
-          <SidebarLink icon={<BarChart2 size={20} />} label="Analisi" href="/dashboard" />
-          <SidebarLink icon={<Utensils size={20} />} label="Ricette AI" href="/dashboard" />
+          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm sidebar-active text-nutrio-mint">
+            <LayoutGrid size={20} />
+            Dashboard
+          </Link>
+          <Link href="/history" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
+            <History size={20} />
+            Cronologia
+          </Link>
+          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
+            <BarChart2 size={20} />
+            Analisi
+          </Link>
+          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
+            <Utensils size={20} />
+            Ricette AI
+          </Link>
         </nav>
 
         <div className="space-y-4 pt-8 border-t">
-          <SidebarLink icon={<Settings size={20} />} label="Impostazioni" href="/dashboard" />
+          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
+            <Settings size={20} />
+            Impostazioni
+          </Link>
           <div className="bg-[#F8FAFC] rounded-2xl p-3 flex items-center gap-3">
             <Avatar className="w-10 h-10 border-2 border-white">
               <AvatarImage src="https://picsum.photos/seed/alex/100/100" />
@@ -455,7 +454,7 @@ export default function Dashboard() {
       {/* Sidebar Destra */}
       <aside className="w-80 bg-white/50 border-l hidden 2xl:flex flex-col py-10 px-8 fixed right-0 h-full overflow-y-auto">
         <section className="mb-10">
-          <h3 className="text-xl font-bold text-slate-900 mb-6">Insights AI</h3>
+          <h3 className="text-xl font-bold text-slate-900 mb-6">Insights IA</h3>
           <Card className="border-none rounded-[28px] bg-[#E8FFF1] p-6 relative overflow-hidden">
             <div className="flex items-center gap-2 text-nutrio-mint mb-4">
               <Sparkles size={16} />
@@ -501,18 +500,6 @@ export default function Dashboard() {
         </div>
       </aside>
     </div>
-  );
-}
-
-function SidebarLink({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
-  return (
-    <Link href={href} className={cn(
-      "w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm",
-      active ? "sidebar-active text-nutrio-mint" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-    )}>
-      <span className={active ? "text-nutrio-mint" : "text-slate-400"}>{icon}</span>
-      {label}
-    </Link>
   );
 }
 
