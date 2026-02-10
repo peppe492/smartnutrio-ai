@@ -5,25 +5,44 @@ import { useState } from 'react';
 import { 
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, 
   Trash2, LayoutGrid, History, BarChart2, Utensils, Settings,
-  CheckCircle2, AlertCircle, Circle
+  CheckCircle2, AlertCircle, Circle, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
+interface MealHistory {
+  id: string;
+  name: string;
+  type: string;
+  time: string;
+  calories: number;
+  image: string;
+  macros: {
+    protein: number;
+    carbs: number;
+    fat: number;
+  }
+}
+
 export default function HistoryPage() {
   const [currentMonth, setCurrentMonth] = useState("Ottobre 2023");
-
-  const meals = [
+  const [meals, setMeals] = useState<MealHistory[]>([
     {
       id: '1',
       name: 'Avocado Toast',
       type: 'Colazione',
       time: '08:30',
       calories: 340,
-      image: 'https://picsum.photos/seed/avotoast/100/100'
+      image: 'https://picsum.photos/seed/avotoast/100/100',
+      macros: { protein: 12, carbs: 24, fat: 18 }
     },
     {
       id: '2',
@@ -31,7 +50,8 @@ export default function HistoryPage() {
       type: 'Pranzo',
       time: '13:15',
       calories: 520,
-      image: 'https://picsum.photos/seed/chickensalad/100/100'
+      image: 'https://picsum.photos/seed/chickensalad/100/100',
+      macros: { protein: 42, carbs: 10, fat: 12 }
     },
     {
       id: '3',
@@ -39,7 +59,8 @@ export default function HistoryPage() {
       type: 'Spuntino',
       time: '16:00',
       calories: 180,
-      image: 'https://picsum.photos/seed/nuts/100/100'
+      image: 'https://picsum.photos/seed/nuts/100/100',
+      macros: { protein: 5, carbs: 4, fat: 15 }
     },
     {
       id: '4',
@@ -47,9 +68,29 @@ export default function HistoryPage() {
       type: 'Cena',
       time: '19:45',
       calories: 810,
-      image: 'https://picsum.photos/seed/salmon/100/100'
+      image: 'https://picsum.photos/seed/salmon/100/100',
+      macros: { protein: 45, carbs: 5, fat: 22 }
     }
-  ];
+  ]);
+
+  const [editingMeal, setEditingMeal] = useState<MealHistory | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleDeleteMeal = (id: string) => {
+    setMeals(meals.filter(m => m.id !== id));
+  };
+
+  const handleEditMeal = (meal: MealHistory) => {
+    setEditingMeal({ ...meal });
+    setIsEditModalOpen(true);
+  };
+
+  const saveEditedMeal = () => {
+    if (!editingMeal) return;
+    setMeals(meals.map(m => m.id === editingMeal.id ? editingMeal : m));
+    setIsEditModalOpen(false);
+    setEditingMeal(null);
+  };
 
   return (
     <div className="flex min-h-screen bg-[#f6f8f7]">
@@ -155,13 +196,6 @@ export default function HistoryPage() {
                     </div>
                   );
                 })}
-                
-                {/* Altri giorni vuoti per layout */}
-                {Array.from({ length: 11 }).map((_, i) => (
-                  <div key={i+15} className="aspect-square flex flex-col items-center justify-center rounded-2xl hover:bg-slate-50 cursor-pointer">
-                    <span className="text-sm font-bold text-slate-400">{i + 15}</span>
-                  </div>
-                ))}
               </div>
 
               {/* Legenda */}
@@ -248,9 +282,14 @@ export default function HistoryPage() {
                         <p className="font-bold text-lg text-slate-900">{meal.calories}</p>
                         <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest">kcal</p>
                       </div>
-                      <button className="ml-4 opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="flex items-center ml-4 opacity-0 group-hover:opacity-100 transition-all">
+                        <button onClick={() => handleEditMeal(meal)} className="p-2 text-slate-300 hover:text-nutrio-mint transition-all">
+                          <Pencil size={18} />
+                        </button>
+                        <button onClick={() => handleDeleteMeal(meal.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -258,6 +297,76 @@ export default function HistoryPage() {
             </Card>
           </div>
         </div>
+
+        {/* Edit Meal Dialog */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-md rounded-[32px] p-8 border-none bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Modifica Pasto</DialogTitle>
+            </DialogHeader>
+            {editingMeal && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Nome</Label>
+                  <Input 
+                    id="edit-name" 
+                    value={editingMeal.name} 
+                    onChange={(e) => setEditingMeal({ ...editingMeal, name: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cal">Calorie (kcal)</Label>
+                    <Input 
+                      id="edit-cal" 
+                      type="number"
+                      value={editingMeal.calories} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, calories: Number(e.target.value) })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-prot">Proteine (g)</Label>
+                    <Input 
+                      id="edit-prot" 
+                      type="number"
+                      value={editingMeal.macros.protein} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, protein: Number(e.target.value) } })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-carb">Carboidrati (g)</Label>
+                    <Input 
+                      id="edit-carb" 
+                      type="number"
+                      value={editingMeal.macros.carbs} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, carbs: Number(e.target.value) } })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-fat">Grassi (g)</Label>
+                    <Input 
+                      id="edit-fat" 
+                      type="number"
+                      value={editingMeal.macros.fat} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, fat: Number(e.target.value) } })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="rounded-xl">Annulla</Button>
+              <Button onClick={saveEditedMeal} className="rounded-xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white">Salva Modifiche</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
 
       {/* Floating Button per Mobile */}

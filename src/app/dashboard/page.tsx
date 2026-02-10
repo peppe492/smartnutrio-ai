@@ -10,12 +10,12 @@ import {
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, BarChart2, Utensils, 
-  Settings, Bell, Dumbbell, Droplets, Sparkles, MoreHorizontal
+  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,8 +69,10 @@ export default function Dashboard() {
   const waterGoal = 2.5;
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [manualInput, setManualInput] = useState("");
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -152,6 +154,22 @@ export default function Dashboard() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDeleteMeal = (id: string) => {
+    setMeals(meals.filter(m => m.id !== id));
+  };
+
+  const handleEditMeal = (meal: Meal) => {
+    setEditingMeal({ ...meal });
+    setIsEditModalOpen(true);
+  };
+
+  const saveEditedMeal = () => {
+    if (!editingMeal) return;
+    setMeals(meals.map(m => m.id === editingMeal.id ? editingMeal : m));
+    setIsEditModalOpen(false);
+    setEditingMeal(null);
   };
 
   if (!mounted) return null;
@@ -292,7 +310,12 @@ export default function Dashboard() {
 
           <div className="space-y-6">
             {meals.map((meal) => (
-              <MealCard key={meal.id} meal={meal} />
+              <MealCard 
+                key={meal.id} 
+                meal={meal} 
+                onDelete={() => handleDeleteMeal(meal.id)}
+                onEdit={() => handleEditMeal(meal)}
+              />
             ))}
 
             <Card className="border-none bg-transparent shadow-none border-2 border-dashed border-slate-200 rounded-[28px] p-8 flex flex-col items-center justify-center group relative overflow-hidden">
@@ -348,6 +371,85 @@ export default function Dashboard() {
             </Card>
           </div>
         </section>
+
+        {/* Edit Meal Dialog */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-md rounded-[32px] p-8 border-none bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Modifica Pasto</DialogTitle>
+            </DialogHeader>
+            {editingMeal && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Nome</Label>
+                  <Input 
+                    id="edit-name" 
+                    value={editingMeal.name} 
+                    onChange={(e) => setEditingMeal({ ...editingMeal, name: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-desc">Descrizione</Label>
+                  <Input 
+                    id="edit-desc" 
+                    value={editingMeal.description} 
+                    onChange={(e) => setEditingMeal({ ...editingMeal, description: e.target.value })}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-cal">Calorie (kcal)</Label>
+                    <Input 
+                      id="edit-cal" 
+                      type="number"
+                      value={editingMeal.calories} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, calories: Number(e.target.value) })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-prot">Proteine (g)</Label>
+                    <Input 
+                      id="edit-prot" 
+                      type="number"
+                      value={editingMeal.macros.protein} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, protein: Number(e.target.value) } })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-carb">Carboidrati (g)</Label>
+                    <Input 
+                      id="edit-carb" 
+                      type="number"
+                      value={editingMeal.macros.carbs} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, carbs: Number(e.target.value) } })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-fat">Grassi (g)</Label>
+                    <Input 
+                      id="edit-fat" 
+                      type="number"
+                      value={editingMeal.macros.fat} 
+                      onChange={(e) => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, fat: Number(e.target.value) } })}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="rounded-xl">Annulla</Button>
+              <Button onClick={saveEditedMeal} className="rounded-xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white">Salva Modifiche</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
 
       {/* Sidebar Destra */}
@@ -434,11 +536,11 @@ function MacroRow({ icon, label, current, goal, color, bgColor }: { icon: React.
   );
 }
 
-function MealCard({ meal }: { meal: Meal }) {
+function MealCard({ meal, onDelete, onEdit }: { meal: Meal, onDelete: () => void, onEdit: () => void }) {
   return (
     <Card className="border-none rounded-[28px] bg-white meal-card-shadow overflow-hidden p-5 flex items-center gap-5 group hover:scale-[1.01] transition-transform">
       <div className="relative w-20 h-20 shrink-0">
-        <img src={meal.image} alt={meal.name} className="w-full h-full object-cover rounded-2xl" />
+        <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} alt={meal.name} className="w-full h-full object-cover rounded-2xl" />
         <div className="absolute -top-2 -left-2 bg-nutrio-mint text-white text-[9px] font-extrabold px-2 py-1 rounded-full border-2 border-white shadow-sm">
           {meal.time}
         </div>
@@ -452,14 +554,19 @@ function MealCard({ meal }: { meal: Meal }) {
           <MacroBadge label="F" value={meal.macros.fat} color="text-purple-500 bg-purple-50" />
         </div>
       </div>
-      <div className="text-right flex items-center gap-4">
+      <div className="text-right flex items-center gap-2">
         <div>
           <div className="font-bold text-lg text-slate-900 leading-none">{meal.calories}</div>
           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Kcal</div>
         </div>
-        <Button variant="ghost" size="icon" className="text-slate-300">
-          <MoreHorizontal size={20} />
-        </Button>
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-nutrio-mint" onClick={onEdit}>
+            <Pencil size={14} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={onDelete}>
+            <Trash2 size={14} />
+          </Button>
+        </div>
       </div>
     </Card>
   );
