@@ -14,9 +14,11 @@ import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
 import { ArrowRight, ChevronLeft, Plus, Trash2, Utensils, ScanBarcode, X, Loader2 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth, useFirestore } from '@/firebase';
+import { collection, doc, setDoc, addDoc } from 'firebase/firestore';
 
 interface Ingredient {
-  id: string;
+  id?: string;
   name: string;
   calories: number;
   protein: number;
@@ -27,6 +29,9 @@ interface Ingredient {
 export default function Onboarding() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const db = useFirestore();
+  
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     gender: 'male' as 'male' | 'female',
@@ -37,11 +42,11 @@ export default function Onboarding() {
   });
 
   const [ingredients, setIngredients] = useState<Ingredient[]>([
-    { id: '1', name: 'Riso Integrale', calories: 350, protein: 7, carbs: 75, fat: 2 },
-    { id: '2', name: 'Petto di Pollo', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+    { name: 'Riso Integrale', calories: 350, protein: 7, carbs: 75, fat: 2 },
+    { name: 'Petto di Pollo', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
   ]);
 
-  const [newIngredient, setNewIngredient] = useState<Omit<Ingredient, 'id'>>({
+  const [newIngredient, setNewIngredient] = useState<Ingredient>({
     name: '',
     calories: 0,
     protein: 0,
@@ -55,9 +60,7 @@ export default function Onboarding() {
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-
     if (isScanning) {
-      // Aggiungiamo un piccolo ritardo per assicurarci che il Dialog e il div #reader siano montati
       timeoutId = setTimeout(() => {
         const readerElement = document.getElementById("reader");
         if (readerElement) {
@@ -65,43 +68,32 @@ export default function Onboarding() {
             const scanner = new Html5QrcodeScanner(
               "reader",
               { fps: 10, qrbox: { width: 250, height: 150 } },
-              /* verbose= */ false
+              false
             );
-
             scanner.render(onScanSuccess, onScanFailure);
             scannerRef.current = scanner;
           } catch (err) {
-            console.error("Errore durante l'inizializzazione dello scanner:", err);
+            console.error("Errore scanner:", err);
           }
         }
       }, 300);
     }
-
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       if (scannerRef.current) {
-        scannerRef.current.clear().catch((error) => {
-          // Ignoriamo l'errore se lo scanner è già stato rimosso o non trovato
-          if (!error?.message?.includes("id=reader")) {
-            console.error("Errore durante la pulizia dello scanner:", error);
-          }
-        });
+        scannerRef.current.clear().catch(() => {});
         scannerRef.current = null;
       }
     };
   }, [isScanning]);
 
   async function onScanSuccess(decodedText: string) {
-    if (scannerRef.current) {
-      scannerRef.current.pause();
-    }
+    if (scannerRef.current) scannerRef.current.pause();
     setIsScanning(false);
     setIsFetching(true);
-
     try {
       const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`);
       const data = await response.json();
-
       if (data.status === 1) {
         const product = data.product;
         setNewIngredient({
@@ -111,66 +103,68 @@ export default function Onboarding() {
           carbs: product.nutriments.carbohydrates_100g || 0,
           fat: product.nutriments.fat_100g || 0,
         });
-        toast({
-          title: "Prodotto trovato!",
-          description: `Rilevato: ${product.product_name}`,
-        });
+        toast({ title: "Prodotto trovato!", description: product.product_name });
       } else {
-        toast({
-          variant: "destructive",
-          title: "Prodotto non trovato",
-          description: "Inserisci i dati manualmente o prova con un altro codice.",
-        });
+        toast({ variant: "destructive", title: "Non trovato", description: "Inserisci manualmente." });
       }
     } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Errore di connessione",
-        description: "Impossibile recuperare i dati del prodotto.",
-      });
+      toast({ variant: "destructive", title: "Errore", description: "Impossibile recuperare i dati." });
     } finally {
       setIsFetching(false);
     }
   }
 
-  function onScanFailure(error: any) {
-    // Silenzioso per evitare log eccessivi durante la ricerca del codice
-  }
+  function onScanFailure() {}
 
   const handleNext = () => setStep(step + 1);
   const handlePrev = () => setStep(step - 1);
   
   const addIngredient = () => {
     if (!newIngredient.name) return;
-    setIngredients([...ingredients, { ...newIngredient, id: Date.now().toString() }]);
+    setIngredients([...ingredients, { ...newIngredient }]);
     setNewIngredient({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
   };
 
-  const removeIngredient = (id: string) => {
-    setIngredients(ingredients.filter(i => i.id !== id));
+  const removeIngredient = (index: number) => {
+    setIngredients(ingredients.filter((_, i) => i !== index));
   };
 
-  const finish = () => {
+  const finish = async () => {
+    if (!user || !db) {
+      toast({ variant: "destructive", title: "Errore", description: "Devi essere loggato." });
+      return;
+    }
+
     const tdee = calculateTDEE({
       ...formData,
       activityLevel: formData.activityLevel as any
     });
-    localStorage.setItem('nutrio_tdee_goal', tdee.toString());
-    localStorage.setItem('nutrio_allowed_ingredients', JSON.stringify(ingredients));
-    router.push('/dashboard');
+
+    try {
+      // Salva il profilo utente/TDEE
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { tdeeGoal: tdee }, { merge: true });
+
+      // Salva gli ingredienti su Firestore
+      const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
+      for (const ing of ingredients) {
+        await addDoc(ingredientsCol, ing);
+      }
+
+      toast({ title: "Configurazione completata!" });
+      router.push('/dashboard');
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Errore salvataggio" });
+    }
   };
 
   return (
     <div className="min-h-screen bg-nutrio-bg flex items-center justify-center p-4">
       <Card className="w-full max-w-xl border-none nutrio-shadow overflow-hidden bg-white">
         <div className="h-2 bg-slate-100">
-          <div 
-            className="h-full bg-nutrio-mint transition-all duration-300" 
-            style={{ width: `${(step / 4) * 100}%` }}
-          />
+          <div className="h-full bg-nutrio-mint transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }} />
         </div>
-        
         <CardHeader className="pt-8 pb-4">
           <div className="flex items-center gap-4 mb-2">
             {step > 1 && (
@@ -179,227 +173,93 @@ export default function Onboarding() {
               </Button>
             )}
             <CardTitle className="text-2xl font-bold">
-              {step === 1 ? 'Informazioni Personali' : step === 2 ? 'Dati Corporei' : step === 3 ? 'Livello di Attività' : 'Lista Ingredienti Consentiti'}
+              {step === 1 ? 'Informazioni Personali' : step === 2 ? 'Dati Corporei' : step === 3 ? 'Livello di Attività' : 'Dispensa IA'}
             </CardTitle>
           </div>
           <CardDescription>
-            {step === 4 ? 'Aggiungi gli ingredienti che utilizzi abitualmente. Puoi scansionare il codice a barre per velocizzare.' : 'Aiutaci a calcolare il tuo fabbisogno calorico giornaliero.'}
+            {step === 4 ? 'Aggiungi i tuoi ingredienti preferiti. Li userai per comporre i tuoi pasti.' : 'Personalizziamo il tuo piano.'}
           </CardDescription>
         </CardHeader>
-        
         <CardContent className="space-y-6 pb-8">
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Sesso</Label>
-                <RadioGroup 
-                  defaultValue={formData.gender} 
-                  onValueChange={(v) => setFormData({ ...formData, gender: v as any })}
-                  className="flex gap-4"
-                >
+                <RadioGroup defaultValue={formData.gender} onValueChange={(v) => setFormData({ ...formData, gender: v as any })} className="flex gap-4">
                   <div className="flex-1">
                     <RadioGroupItem value="male" id="male" className="peer sr-only" />
-                    <Label
-                      htmlFor="male"
-                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer text-center"
-                    >
-                      <span className="text-sm font-medium">Uomo</span>
-                    </Label>
+                    <Label htmlFor="male" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 cursor-pointer text-center peer-data-[state=checked]:border-nutrio-mint">Uomo</Label>
                   </div>
                   <div className="flex-1">
                     <RadioGroupItem value="female" id="female" className="peer sr-only" />
-                    <Label
-                      htmlFor="female"
-                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer text-center"
-                    >
-                      <span className="text-sm font-medium">Donna</span>
-                    </Label>
+                    <Label htmlFor="female" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 cursor-pointer text-center peer-data-[state=checked]:border-nutrio-mint">Donna</Label>
                   </div>
                 </RadioGroup>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="age">Età</Label>
-                <Input 
-                  id="age" 
-                  type="number" 
-                  value={formData.age} 
-                  onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
-                  className="h-12 rounded-xl"
-                />
+                <Input id="age" type="number" value={formData.age} onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })} />
               </div>
             </div>
           )}
-
           {step === 2 && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="weight">Peso (kg)</Label>
-                <Input 
-                  id="weight" 
-                  type="number" 
-                  value={formData.weight} 
-                  onChange={(e) => setFormData({ ...formData, weight: Number(e.target.value) })}
-                  className="h-12 rounded-xl"
-                />
+                <Input id="weight" type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="height">Altezza (cm)</Label>
-                <Input 
-                  id="height" 
-                  type="number" 
-                  value={formData.height} 
-                  onChange={(e) => setFormData({ ...formData, height: Number(e.target.value) })}
-                  className="h-12 rounded-xl"
-                />
+                <Input id="height" type="number" value={formData.height} onChange={(e) => setFormData({ ...formData, height: Number(e.target.value) })} />
               </div>
             </div>
           )}
-
           {step === 3 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Quanto sei attivo?</Label>
-                <Select 
-                  value={formData.activityLevel.toString()} 
-                  onValueChange={(v) => setFormData({ ...formData, activityLevel: Number(v) })}
-                >
-                  <SelectTrigger className="h-12 rounded-xl">
-                    <SelectValue placeholder="Seleziona il livello di attività" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACTIVITY_LEVELS.map((level) => (
-                      <SelectItem key={level.value} value={level.value.toString()}>
-                        {level.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label>Attività</Label>
+                <Select value={formData.activityLevel.toString()} onValueChange={(v) => setFormData({ ...formData, activityLevel: Number(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{ACTIVITY_LEVELS.map(l => <SelectItem key={l.value} value={l.value.toString()}>{l.label}</SelectItem>)}</SelectContent>
                 </Select>
-              </div>
-              <div className="bg-nutrio-mint/10 p-4 rounded-xl text-nutrio-mint font-medium text-sm">
-                Il tuo TDEE determina quante calorie bruci mediamente ogni giorno.
               </div>
             </div>
           )}
-
           {step === 4 && (
             <div className="space-y-6">
               <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                  <Label className="text-sm font-bold">Nuovo Ingrediente</Label>
+                <div className="flex justify-between items-center">
+                  <Label className="font-bold">Aggiungi ingrediente</Label>
                   <Dialog open={isScanning} onOpenChange={setIsScanning}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="rounded-full border-nutrio-mint text-nutrio-mint hover:bg-nutrio-mint/10 gap-2 h-9">
-                        <ScanBarcode size={16} />
-                        Scansiona Barcode
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="p-0 overflow-hidden sm:max-w-md border-none bg-black">
-                      <div className="relative min-h-[300px] flex items-center justify-center">
-                        <div id="reader" className="w-full"></div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full z-50"
-                          onClick={() => setIsScanning(false)}
-                        >
-                          <X size={24} />
-                        </Button>
-                        <div className="absolute bottom-10 left-0 right-0 text-center pointer-events-none">
-                          <p className="text-white text-sm font-bold bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-sm">
-                            Inquadra il codice a barre del prodotto
-                          </p>
-                        </div>
-                      </div>
-                    </DialogContent>
+                    <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full"><ScanBarcode size={16} className="mr-2" /> Scanner</Button></DialogTrigger>
+                    <DialogContent className="p-0 bg-black"><div id="reader" className="w-full" /><Button variant="ghost" className="absolute top-4 right-4 text-white" onClick={() => setIsScanning(false)}><X /></Button></DialogContent>
                   </Dialog>
                 </div>
-
-                {isFetching && (
-                  <div className="flex items-center justify-center gap-2 text-nutrio-mint font-bold py-2">
-                    <Loader2 className="animate-spin" size={18} />
-                    Recupero dati prodotto...
-                  </div>
-                )}
-
+                {isFetching && <div className="text-center text-nutrio-mint font-bold animate-pulse">Ricerca...</div>}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs">Nome Ingrediente</Label>
-                    <Input 
-                      placeholder="Esempio: Pasta Integrale" 
-                      value={newIngredient.name}
-                      onChange={(e) => setNewIngredient({...newIngredient, name: e.target.value})}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Calorie (100g)</Label>
-                    <Input 
-                      type="number" 
-                      value={newIngredient.calories}
-                      onChange={(e) => setNewIngredient({...newIngredient, calories: Number(e.target.value)})}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Proteine (100g)</Label>
-                    <Input 
-                      type="number" 
-                      value={newIngredient.protein}
-                      onChange={(e) => setNewIngredient({...newIngredient, protein: Number(e.target.value)})}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Carboidrati (100g)</Label>
-                    <Input 
-                      type="number" 
-                      value={newIngredient.carbs}
-                      onChange={(e) => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Grassi (100g)</Label>
-                    <Input 
-                      type="number" 
-                      value={newIngredient.fat}
-                      onChange={(e) => setNewIngredient({...newIngredient, fat: Number(e.target.value)})}
-                      className="rounded-xl h-11"
-                    />
-                  </div>
+                  <Input placeholder="Nome" className="col-span-2" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
+                  <Input placeholder="kcal" type="number" value={newIngredient.calories} onChange={e => setNewIngredient({...newIngredient, calories: Number(e.target.value)})} />
+                  <Input placeholder="Prot" type="number" value={newIngredient.protein} onChange={e => setNewIngredient({...newIngredient, protein: Number(e.target.value)})} />
+                  <Input placeholder="Carb" type="number" value={newIngredient.carbs} onChange={e => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})} />
+                  <Input placeholder="Grass" type="number" value={newIngredient.fat} onChange={e => setNewIngredient({...newIngredient, fat: Number(e.target.value)})} />
                 </div>
-                <Button onClick={addIngredient} className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-12 shadow-md">
-                  <Plus size={16} className="mr-2" /> Aggiungi alla lista
-                </Button>
+                <Button onClick={addIngredient} className="w-full bg-slate-900 text-white">Aggiungi</Button>
               </div>
-
-              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2 no-scrollbar">
-                {ingredients.map((ing) => (
-                  <div key={ing.id} className="flex items-center justify-between p-3 bg-white border rounded-xl shadow-sm hover:border-nutrio-mint/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-nutrio-mint/10 rounded-lg flex items-center justify-center text-nutrio-mint">
-                        <Utensils size={16} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900 leading-tight">{ing.name}</p>
-                        <p className="text-[10px] text-slate-400 font-semibold">{ing.calories} kcal | P: {ing.protein}g C: {ing.carbs}g G: {ing.fat}g</p>
-                      </div>
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {ingredients.map((ing, i) => (
+                  <div key={i} className="flex justify-between items-center p-3 border rounded-xl bg-white">
+                    <div>
+                      <p className="text-sm font-bold">{ing.name}</p>
+                      <p className="text-[10px] text-slate-400">{ing.calories}kcal | P:{ing.protein}g C:{ing.carbs}g G:{ing.fat}g</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-500" onClick={() => removeIngredient(ing.id)}>
-                      <Trash2 size={16} />
-                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => removeIngredient(i)}><Trash2 size={16} /></Button>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          <Button 
-            className="w-full h-14 rounded-xl text-lg bg-nutrio-mint hover:bg-nutrio-mint/90 text-white shadow-lg font-bold"
-            onClick={step < 4 ? handleNext : finish}
-          >
-            {step < 4 ? 'Continua' : 'Completa Configurazione'}
-            <ArrowRight className="ml-2 w-5 h-5" />
+          <Button className="w-full h-14 bg-nutrio-mint text-white font-bold" onClick={step < 4 ? handleNext : finish}>
+            {step < 4 ? 'Continua' : 'Fine'} <ArrowRight className="ml-2" />
           </Button>
         </CardContent>
       </Card>

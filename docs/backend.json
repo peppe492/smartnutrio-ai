@@ -1,0 +1,53 @@
+
+{
+  "entities": {
+    "Ingredient": {
+      "title": "Ingrediente",
+      "description": "Un ingrediente approvato nella dispensa dell'utente",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" }
+      },
+      "required": ["name", "calories", "protein", "carbs", "fat"]
+    },
+    "Meal": {
+      "title": "Pasto",
+      "description": "Un pasto registrato dall'utente",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "calories": { "type": "number" },
+        "macros": {
+          "type": "object",
+          "properties": {
+            "protein": { "type": "number" },
+            "carbs": { "type": "number" },
+            "fat": { "type": "number" }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["colazione", "pranzo", "cena", "spuntino"] },
+        "image": { "type": "string" }
+      },
+      "required": ["name", "calories", "timestamp", "type"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/users/{userId}/ingredients/{ingredientId}": {
+      "schema": "#/backend/entities/Ingredient",
+      "description": "Lista ingredienti consentiti dell'utente"
+    },
+    "/users/{userId}/meals/{mealId}": {
+      "schema": "#/backend/entities/Meal",
+      "description": "Registro dei pasti dell'utente"
+    }
+  }
+}
