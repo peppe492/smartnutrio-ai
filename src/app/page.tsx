@@ -1,8 +1,51 @@
+
+"use client";
+
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Apple, Smartphone } from 'lucide-react';
+import { Apple, Smartphone, Loader2 } from 'lucide-react';
+import { useAuth, useFirebase } from '@/firebase';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const { auth } = useFirebase();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user && !loading) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
+
+  const handleGoogleLogin = async () => {
+    if (!auth) return;
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Errore di accesso",
+        description: "Impossibile completare il login con Google. Riprova.",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-10 h-10 text-nutrio-mint animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
@@ -17,12 +60,19 @@ export default function Home() {
         </p>
         
         <div className="space-y-4 w-full">
-          <Button asChild className="w-full h-14 text-lg rounded-xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-semibold shadow-md">
-            <Link href="/onboarding">Inizia Ora</Link>
+          <Button 
+            onClick={handleGoogleLogin}
+            className="w-full h-14 text-lg rounded-xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-semibold shadow-md"
+          >
+            Inizia Ora con Google
           </Button>
           
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="h-14 rounded-xl flex items-center gap-2 border-slate-200">
+            <Button 
+              variant="outline" 
+              className="h-14 rounded-xl flex items-center gap-2 border-slate-200"
+              onClick={handleGoogleLogin}
+            >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
@@ -43,7 +93,7 @@ export default function Home() {
               </svg>
               Google
             </Button>
-            <Button variant="outline" className="h-14 rounded-xl flex items-center gap-2 border-slate-200">
+            <Button variant="outline" className="h-14 rounded-xl flex items-center gap-2 border-slate-200 disabled:opacity-50" disabled>
               <Apple className="w-5 h-5" />
               Apple
             </Button>
