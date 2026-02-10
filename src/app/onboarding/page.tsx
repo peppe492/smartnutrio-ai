@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
-import { ArrowRight, ChevronLeft } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Plus, Trash2, Utensils } from 'lucide-react';
+
+interface Ingredient {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 export default function Onboarding() {
   const router = useRouter();
@@ -22,25 +32,49 @@ export default function Onboarding() {
     activityLevel: 1.55,
   });
 
+  const [ingredients, setIngredients] = useState<Ingredient[]>([
+    { id: '1', name: 'Riso Integrale', calories: 350, protein: 7, carbs: 75, fat: 2 },
+    { id: '2', name: 'Petto di Pollo', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+  ]);
+
+  const [newIngredient, setNewIngredient] = useState<Omit<Ingredient, 'id'>>({
+    name: '',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0
+  });
+
   const handleNext = () => setStep(step + 1);
   const handlePrev = () => setStep(step - 1);
   
+  const addIngredient = () => {
+    if (!newIngredient.name) return;
+    setIngredients([...ingredients, { ...newIngredient, id: Date.now().toString() }]);
+    setNewIngredient({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
+  };
+
+  const removeIngredient = (id: string) => {
+    setIngredients(ingredients.filter(i => i.id !== id));
+  };
+
   const finish = () => {
     const tdee = calculateTDEE({
       ...formData,
       activityLevel: formData.activityLevel as any
     });
     localStorage.setItem('nutrio_tdee_goal', tdee.toString());
+    localStorage.setItem('nutrio_allowed_ingredients', JSON.stringify(ingredients));
     router.push('/dashboard');
   };
 
   return (
     <div className="min-h-screen bg-nutrio-bg flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-none nutrio-shadow overflow-hidden bg-white">
+      <Card className="w-full max-w-xl border-none nutrio-shadow overflow-hidden bg-white">
         <div className="h-2 bg-slate-100">
           <div 
             className="h-full bg-nutrio-mint transition-all duration-300" 
-            style={{ width: `${(step / 3) * 100}%` }}
+            style={{ width: `${(step / 4) * 100}%` }}
           />
         </div>
         
@@ -52,11 +86,11 @@ export default function Onboarding() {
               </Button>
             )}
             <CardTitle className="text-2xl font-bold">
-              {step === 1 ? 'Informazioni Personali' : step === 2 ? 'Dati Corporei' : 'Livello di Attività'}
+              {step === 1 ? 'Informazioni Personali' : step === 2 ? 'Dati Corporei' : step === 3 ? 'Livello di Attività' : 'Lista Ingredienti Consentiti'}
             </CardTitle>
           </div>
           <CardDescription>
-            Aiutaci a calcolare il tuo fabbisogno calorico giornaliero.
+            {step === 4 ? 'Aggiungi gli ingredienti che utilizzi abitualmente. Potrai comporre i pasti solo usando questi.' : 'Aiutaci a calcolare il tuo fabbisogno calorico giornaliero.'}
           </CardDescription>
         </CardHeader>
         
@@ -74,7 +108,7 @@ export default function Onboarding() {
                     <RadioGroupItem value="male" id="male" className="peer sr-only" />
                     <Label
                       htmlFor="male"
-                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer"
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer text-center"
                     >
                       <span className="text-sm font-medium">Uomo</span>
                     </Label>
@@ -83,7 +117,7 @@ export default function Onboarding() {
                     <RadioGroupItem value="female" id="female" className="peer sr-only" />
                     <Label
                       htmlFor="female"
-                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer"
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer text-center"
                     >
                       <span className="text-sm font-medium">Donna</span>
                     </Label>
@@ -154,11 +188,87 @@ export default function Onboarding() {
             </div>
           )}
 
+          {step === 4 && (
+            <div className="space-y-6">
+              <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Nome Ingrediente</Label>
+                    <Input 
+                      placeholder="Esempio: Pasta" 
+                      value={newIngredient.name}
+                      onChange={(e) => setNewIngredient({...newIngredient, name: e.target.value})}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Calorie (100g)</Label>
+                    <Input 
+                      type="number" 
+                      value={newIngredient.calories}
+                      onChange={(e) => setNewIngredient({...newIngredient, calories: Number(e.target.value)})}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Proteine (100g)</Label>
+                    <Input 
+                      type="number" 
+                      value={newIngredient.protein}
+                      onChange={(e) => setNewIngredient({...newIngredient, protein: Number(e.target.value)})}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Carboidrati (100g)</Label>
+                    <Input 
+                      type="number" 
+                      value={newIngredient.carbs}
+                      onChange={(e) => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Grassi (100g)</Label>
+                    <Input 
+                      type="number" 
+                      value={newIngredient.fat}
+                      onChange={(e) => setNewIngredient({...newIngredient, fat: Number(e.target.value)})}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+                <Button onClick={addIngredient} className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl">
+                  <Plus size={16} className="mr-2" /> Aggiungi alla lista
+                </Button>
+              </div>
+
+              <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 no-scrollbar">
+                {ingredients.map((ing) => (
+                  <div key={ing.id} className="flex items-center justify-between p-3 bg-white border rounded-xl shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-nutrio-mint/10 rounded-lg flex items-center justify-center text-nutrio-mint">
+                        <Utensils size={14} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{ing.name}</p>
+                        <p className="text-[10px] text-slate-400">{ing.calories} kcal | P: {ing.protein}g C: {ing.carbs}g G: {ing.fat}g</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-500" onClick={() => removeIngredient(ing.id)}>
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Button 
             className="w-full h-14 rounded-xl text-lg bg-nutrio-mint hover:bg-nutrio-mint/90 text-white shadow-lg"
-            onClick={step < 3 ? handleNext : finish}
+            onClick={step < 4 ? handleNext : finish}
           >
-            {step < 3 ? 'Continua' : 'Completa Configurazione'}
+            {step < 4 ? 'Continua' : 'Completa Configurazione'}
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
         </CardContent>
