@@ -30,7 +30,6 @@ export default function Onboarding() {
       ...formData,
       activityLevel: formData.activityLevel as any
     });
-    // In a real app, save to localStorage or Firebase
     localStorage.setItem('nutrio_tdee_goal', tdee.toString());
     router.push('/dashboard');
   };
@@ -53,11 +52,11 @@ export default function Onboarding() {
               </Button>
             )}
             <CardTitle className="text-2xl font-bold">
-              {step === 1 ? 'Personal Info' : step === 2 ? 'Body Stats' : 'Activity Level'}
+              {step === 1 ? 'Informazioni Personali' : step === 2 ? 'Dati Corporei' : 'Livello di Attività'}
             </CardTitle>
           </div>
           <CardDescription>
-            Help us calculate your daily calorie needs.
+            Aiutaci a calcolare il tuo fabbisogno calorico giornaliero.
           </CardDescription>
         </CardHeader>
         
@@ -65,7 +64,7 @@ export default function Onboarding() {
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Gender</Label>
+                <Label>Sesso</Label>
                 <RadioGroup 
                   defaultValue={formData.gender} 
                   onValueChange={(v) => setFormData({ ...formData, gender: v as any })}
@@ -77,7 +76,7 @@ export default function Onboarding() {
                       htmlFor="male"
                       className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer"
                     >
-                      <span className="text-sm font-medium">Male</span>
+                      <span className="text-sm font-medium">Uomo</span>
                     </Label>
                   </div>
                   <div className="flex-1">
@@ -86,13 +85,13 @@ export default function Onboarding() {
                       htmlFor="female"
                       className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-nutrio-mint [&:has([data-state=checked])]:border-nutrio-mint cursor-pointer"
                     >
-                      <span className="text-sm font-medium">Female</span>
+                      <span className="text-sm font-medium">Donna</span>
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="age">Age</Label>
+                <Label htmlFor="age">Età</Label>
                 <Input 
                   id="age" 
                   type="number" 
@@ -107,7 +106,7 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="weight">Weight (kg)</Label>
+                <Label htmlFor="weight">Peso (kg)</Label>
                 <Input 
                   id="weight" 
                   type="number" 
@@ -117,7 +116,7 @@ export default function Onboarding() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="height">Height (cm)</Label>
+                <Label htmlFor="height">Altezza (cm)</Label>
                 <Input 
                   id="height" 
                   type="number" 
@@ -132,13 +131,13 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>How active are you?</Label>
+                <Label>Quanto sei attivo?</Label>
                 <Select 
                   value={formData.activityLevel.toString()} 
                   onValueChange={(v) => setFormData({ ...formData, activityLevel: Number(v) })}
                 >
                   <SelectTrigger className="h-12 rounded-xl">
-                    <SelectValue placeholder="Select activity level" />
+                    <SelectValue placeholder="Seleziona il livello di attività" />
                   </SelectTrigger>
                   <SelectContent>
                     {ACTIVITY_LEVELS.map((level) => (
@@ -150,7 +149,7 @@ export default function Onboarding() {
                 </Select>
               </div>
               <div className="bg-nutrio-mint/10 p-4 rounded-xl text-nutrio-mint font-medium text-sm">
-                Your TDEE determines how many calories you burn per day.
+                Il tuo TDEE determina quante calorie bruci mediamente ogni giorno.
               </div>
             </div>
           )}
@@ -159,7 +158,7 @@ export default function Onboarding() {
             className="w-full h-14 rounded-xl text-lg bg-nutrio-mint hover:bg-nutrio-mint/90 text-white shadow-lg"
             onClick={step < 3 ? handleNext : finish}
           >
-            {step < 3 ? 'Continue' : 'Finish Setup'}
+            {step < 3 ? 'Continua' : 'Completa Configurazione'}
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
         </CardContent>

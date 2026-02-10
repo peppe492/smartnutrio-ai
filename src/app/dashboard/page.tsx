@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, 
 } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
-  ChevronRight, ChefHat, Info, History
+  ChefHat, Info, History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-  DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,6 @@ import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
 import { manualEntryAiAssistance } from '@/ai/flows/manual-entry-ai-assistance';
 
-// Types
 interface Meal {
   id: string;
   name: string;
@@ -46,7 +45,6 @@ export default function Dashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [manualInput, setManualInput] = useState("");
   
-  // Hydration handling
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -54,7 +52,6 @@ export default function Dashboard() {
     if (savedGoal) setDailyGoal(Number(savedGoal));
   }, []);
 
-  // Summary logic
   const totals = useMemo(() => {
     return meals.reduce((acc, meal) => ({
       calories: acc.calories + meal.calories,
@@ -65,8 +62,8 @@ export default function Dashboard() {
   }, [meals]);
 
   const chartData = useMemo(() => [
-    { name: 'Consumed', value: totals.calories },
-    { name: 'Remaining', value: Math.max(0, dailyGoal - totals.calories) }
+    { name: 'Consumate', value: totals.calories },
+    { name: 'Rimanenti', value: Math.max(0, dailyGoal - totals.calories) }
   ], [totals.calories, dailyGoal]);
 
   const handleManualEntry = async () => {
@@ -131,11 +128,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-nutrio-bg pb-24">
-      {/* Header / Top Bar */}
       <header className="p-6 bg-white flex items-center justify-between border-b sticky top-0 z-30">
         <div className="flex flex-col">
-          <span className="text-sm text-slate-400 font-medium">{format(date, 'EEEE, d MMM')}</span>
-          <h1 className="text-xl font-bold text-slate-900">Today's Summary</h1>
+          <span className="text-sm text-slate-400 font-medium capitalize">{format(date, 'EEEE, d MMM', { locale: it })}</span>
+          <h1 className="text-xl font-bold text-slate-900">Riepilogo di Oggi</h1>
         </div>
         <Popover>
           <PopoverTrigger asChild>
@@ -149,13 +145,13 @@ export default function Dashboard() {
               selected={date}
               onSelect={(d) => d && setDate(d)}
               initialFocus
+              locale={it}
             />
           </PopoverContent>
         </Popover>
       </header>
 
       <main className="max-w-md mx-auto p-6 space-y-8">
-        {/* Calorie Donut */}
         <div className="relative h-64 flex items-center justify-center">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -175,37 +171,35 @@ export default function Dashboard() {
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-4xl font-bold text-slate-900">{Math.round(totals.calories)}</span>
-            <span className="text-sm text-slate-400 font-medium">of {dailyGoal} kcal</span>
+            <span className="text-sm text-slate-400 font-medium">di {dailyGoal} kcal</span>
           </div>
         </div>
 
-        {/* Macro Cards */}
         <div className="grid grid-cols-3 gap-4">
           <MacroCard 
-            label="Protein" 
+            label="Proteine" 
             value={Math.round(totals.protein)} 
             color="#60A5FA" 
             bgColor="bg-blue-50"
           />
           <MacroCard 
-            label="Carbs" 
+            label="Carbi" 
             value={Math.round(totals.carbs)} 
             color="#FACC15" 
             bgColor="bg-yellow-50"
           />
           <MacroCard 
-            label="Fat" 
+            label="Grassi" 
             value={Math.round(totals.fat)} 
             color="#A78BFA" 
             bgColor="bg-purple-50"
           />
         </div>
 
-        {/* Meal List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-bold text-slate-900">Added Meals</h2>
-            <Button variant="ghost" size="sm" className="text-nutrio-mint font-semibold">View All</Button>
+            <h2 className="text-lg font-bold text-slate-900">Pasti Aggiunti</h2>
+            <Button variant="ghost" size="sm" className="text-nutrio-mint font-semibold">Vedi Tutti</Button>
           </div>
           
           {meals.length === 0 ? (
@@ -213,7 +207,7 @@ export default function Dashboard() {
               <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
                 <ChefHat className="w-6 h-6 text-slate-300" />
               </div>
-              <p className="text-slate-400 text-sm">No meals added yet. Tap + to start.</p>
+              <p className="text-slate-400 text-sm">Nessun pasto aggiunto. Tocca + per iniziare.</p>
             </div>
           ) : (
             meals.map((meal) => (
@@ -231,7 +225,7 @@ export default function Dashboard() {
                     <div className="flex gap-3 text-xs text-slate-400 font-medium">
                       <span>P: {meal.macros.protein}g</span>
                       <span>C: {meal.macros.carbs}g</span>
-                      <span>F: {meal.macros.fat}g</span>
+                      <span>G: {meal.macros.fat}g</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -245,7 +239,6 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* FAB and Tab Bar */}
       <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center pointer-events-none">
         <div className="flex items-center gap-4 bg-white/80 backdrop-blur-lg border border-white/50 px-6 py-3 rounded-2xl nutrio-shadow pointer-events-auto">
           <Button variant="ghost" size="icon" className="text-slate-400 h-10 w-10">
@@ -261,8 +254,8 @@ export default function Dashboard() {
             <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border-none">
               <Tabs defaultValue="camera" className="w-full">
                 <TabsList className="w-full grid grid-cols-2 rounded-none h-14 bg-slate-50 border-b">
-                  <TabsTrigger value="camera" className="data-[state=active]:bg-white rounded-none border-r"><Camera className="w-4 h-4 mr-2" /> Photo</TabsTrigger>
-                  <TabsTrigger value="manual" className="data-[state=active]:bg-white rounded-none"><Pencil className="w-4 h-4 mr-2" /> Manual</TabsTrigger>
+                  <TabsTrigger value="camera" className="data-[state=active]:bg-white rounded-none border-r"><Camera className="w-4 h-4 mr-2" /> Foto</TabsTrigger>
+                  <TabsTrigger value="manual" className="data-[state=active]:bg-white rounded-none"><Pencil className="w-4 h-4 mr-2" /> Manuale</TabsTrigger>
                 </TabsList>
                 
                 <div className="p-6">
@@ -272,12 +265,12 @@ export default function Dashboard() {
                         <Camera className="w-10 h-10 text-nutrio-mint" />
                       </div>
                       <div className="space-y-2">
-                        <DialogTitle className="text-xl font-bold">Snap a Photo</DialogTitle>
-                        <p className="text-sm text-slate-500">Let our AI calculate nutrients from your plate.</p>
+                        <DialogTitle className="text-xl font-bold">Scatta una Foto</DialogTitle>
+                        <p className="text-sm text-slate-500">Lascia che la nostra IA calcoli i nutrienti dal tuo piatto.</p>
                       </div>
                       <Label htmlFor="image-upload" className="block">
                         <div className="w-full h-14 bg-nutrio-mint text-white rounded-xl flex items-center justify-center font-semibold cursor-pointer hover:bg-nutrio-mint/90 transition-colors shadow-md">
-                          {isAnalyzing ? "Analyzing..." : "Choose Image / Take Photo"}
+                          {isAnalyzing ? "Analisi in corso..." : "Scegli Foto / Scatta"}
                         </div>
                         <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isAnalyzing} />
                       </Label>
@@ -287,12 +280,12 @@ export default function Dashboard() {
                   <TabsContent value="manual" className="mt-0">
                     <div className="space-y-6">
                       <div className="space-y-2 text-center">
-                        <DialogTitle className="text-xl font-bold">Manual Entry</DialogTitle>
-                        <p className="text-sm text-slate-500">Type what you ate (e.g., "Apple 100g")</p>
+                        <DialogTitle className="text-xl font-bold">Inserimento Manuale</DialogTitle>
+                        <p className="text-sm text-slate-500">Scrivi cosa hai mangiato (es. "Mela 100g")</p>
                       </div>
                       <div className="space-y-4">
                         <Input 
-                          placeholder="What did you have?" 
+                          placeholder="Cosa hai mangiato?" 
                           className="h-14 rounded-xl text-lg px-4 border-slate-200"
                           value={manualInput}
                           onChange={(e) => setManualInput(e.target.value)}
@@ -302,7 +295,7 @@ export default function Dashboard() {
                           onClick={handleManualEntry}
                           disabled={isAnalyzing}
                         >
-                          {isAnalyzing ? "Fetching data..." : "Add Meal"}
+                          {isAnalyzing ? "Recupero dati..." : "Aggiungi Pasto"}
                         </Button>
                       </div>
                     </div>

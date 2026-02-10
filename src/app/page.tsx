@@ -13,12 +13,12 @@ export default function Home() {
           SmartNutrio <span className="text-nutrio-mint">AI</span>
         </h1>
         <p className="text-slate-500 text-lg mb-12">
-          Track your nutrition effortlessly using AI vision and text assistance.
+          Traccia la tua nutrizione senza sforzo grazie alla visione artificiale e all'assistenza testuale della nostra IA.
         </p>
         
         <div className="space-y-4 w-full">
           <Button asChild className="w-full h-14 text-lg rounded-xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-semibold shadow-md">
-            <Link href="/onboarding">Get Started</Link>
+            <Link href="/onboarding">Inizia Ora</Link>
           </Button>
           
           <div className="grid grid-cols-2 gap-4">
@@ -50,7 +50,7 @@ export default function Home() {
           </div>
           
           <Button variant="link" asChild className="text-slate-400">
-            <Link href="/dashboard">Continue as Guest</Link>
+            <Link href="/dashboard">Continua come Ospite</Link>
           </Button>
         </div>
       </main>

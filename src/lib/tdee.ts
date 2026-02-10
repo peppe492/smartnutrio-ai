@@ -9,7 +9,7 @@ export interface TDEEInput {
 export function calculateTDEE(input: TDEEInput): number {
   const { weight, height, age, gender, activityLevel } = input;
   
-  // Mifflin-St Jeor Equation
+  // Equazione di Mifflin-St Jeor
   let bmr: number;
   if (gender === 'male') {
     bmr = 10 * weight + 6.25 * height - 5 * age + 5;
@@ -21,9 +21,9 @@ export function calculateTDEE(input: TDEEInput): number {
 }
 
 export const ACTIVITY_LEVELS = [
-  { label: 'Sedentary', value: 1.2 },
-  { label: 'Lightly active', value: 1.375 },
-  { label: 'Moderately active', value: 1.55 },
-  { label: 'Very active', value: 1.725 },
-  { label: 'Extra active', value: 1.9 },
+  { label: 'Sedentario', value: 1.2 },
+  { label: 'Leggermente attivo', value: 1.375 },
+  { label: 'Moderatamente attivo', value: 1.55 },
+  { label: 'Molto attivo', value: 1.725 },
+  { label: 'Extra attivo', value: 1.9 },
 ];

@@ -1,31 +1,31 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for assisting users with manual food entry by providing suggestions and nutritional information.
+ * @fileOverview Questo file definisce un flusso Genkit per assistere gli utenti nell'inserimento manuale del cibo.
  *
- * - manualEntryAiAssistance - A function that handles the food entry assistance process.
- * - ManualEntryAiAssistanceInput - The input type for the manualEntryAiAssistance function.
- * - ManualEntryAiAssistanceOutput - The return type for the manualEntryAiAssistance function.
+ * - manualEntryAiAssistance - Una funzione che gestisce il processo di assistenza all'inserimento del cibo.
+ * - ManualEntryAiAssistanceInput - Il tipo di input per la funzione manualEntryAiAssistance.
+ * - ManualEntryAiAssistanceOutput - Il tipo di ritorno per la funzione manualEntryAiAssistance.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ManualEntryAiAssistanceInputSchema = z.object({
-  foodEntry: z.string().describe('The user inputted food item, e.g., \'Apple 100g\'.'),
+  foodEntry: z.string().describe('L\'elemento alimentare inserito dall\'utente, ad esempio "Mela 100g".'),
 });
 
 export type ManualEntryAiAssistanceInput = z.infer<typeof ManualEntryAiAssistanceInputSchema>;
 
 const ManualEntryAiAssistanceOutputSchema = z.object({
-  food_name: z.string().describe('Name of the food item.'),
-  description: z.string().optional().describe('A brief description of the food item.'),
-  calories: z.number().describe('Total calories in the specified quantity of the food item.'),
+  food_name: z.string().describe('Nome dell\'alimento.'),
+  description: z.string().optional().describe('Una breve descrizione dell\'alimento.'),
+  calories: z.number().describe('Calorie totali nella quantità specificata dell\'alimento.'),
   macros: z.object({
-    protein_g: z.number().describe('Grams of protein.'),
-    carbs_g: z.number().describe('Grams of carbohydrates.'),
-    fat_g: z.number().describe('Grams of fat.'),
-  }).describe('Macro nutrient breakdown in grams.'),
+    protein_g: z.number().describe('Grammi di proteine.'),
+    carbs_g: z.number().describe('Grammi di carboidrati.'),
+    fat_g: z.number().describe('Grammi di grassi.'),
+  }).describe('Ripartizione dei macronutrienti in grammi.'),
 });
 
 export type ManualEntryAiAssistanceOutput = z.infer<typeof ManualEntryAiAssistanceOutputSchema>;
@@ -38,14 +38,14 @@ const manualEntryAiAssistancePrompt = ai.definePrompt({
   name: 'manualEntryAiAssistancePrompt',
   input: {schema: ManualEntryAiAssistanceInputSchema},
   output: {schema: ManualEntryAiAssistanceOutputSchema},
-  prompt: `You are an expert nutritionist. A user is manually entering a food item and its quantity.
-  Based on their entry, provide the nutritional information in JSON format, including food name, description, calories, and macros (protein, carbs, fat).
-  The user entry is: {{{foodEntry}}}
+  prompt: `Sei un esperto nutrizionista. Un utente sta inserendo manualmente un alimento e la sua quantità.
+  In base al suo inserimento, fornisci le informazioni nutrizionali in formato JSON, includendo nome dell'alimento, descrizione, calorie e macro (proteine, carboidrati, grassi).
+  L'inserimento dell'utente è: {{{foodEntry}}}
 
-  Return ONLY a JSON response (without markdown) with this structure:
+  Restituisci SOLO una risposta JSON (senza markdown) con questa struttura:
   {
-  "food_name": "Name of the food item",
-  "description": "Brief description of the food item (optional)",
+  "food_name": "Nome dell'alimento",
+  "description": "Breve descrizione dell'alimento (opzionale)",
   "calories": 0,
   "macros": {
   "protein_g": 0,
@@ -54,7 +54,7 @@ const manualEntryAiAssistancePrompt = ai.definePrompt({
   }
   }
 
-  Be realistic with the nutritional values. If the food item cannot be identified, return an error in the JSON.
+  Sii realistico con i valori nutrizionali. Se l'alimento non può essere identificato, restituisci un errore nel JSON.
   `,
 });
 
