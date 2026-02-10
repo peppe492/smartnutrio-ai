@@ -84,7 +84,7 @@ export default function MealAnalysisPage() {
               <ArrowLeft size={16} /> Torna indietro
             </button>
             <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border bg-white shadow-2xl">
-              <img src={mealData.image} className="w-full h-full object-cover" />
+              <img src={mealData.image} alt={mealData.food_name} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
               {/* Mock Hotspots */}
               <div className="absolute top-[35%] left-[45%] flex flex-col items-center">

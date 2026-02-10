@@ -60,10 +60,14 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const db = useFirestore();
   
-  const [date, setDate] = useState<Date>(new Date());
+  const [date, setDate] = useState<Date | null>(null);
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const [mealType, setMealType] = useState('pranzo');
   
+  useEffect(() => {
+    setDate(new Date());
+  }, []);
+
   const ingredientsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'ingredients') : null, [db, user]);
   const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
   const userProfileQuery = useMemo(() => user && db ? doc(db, 'users', user.uid) : null, [db, user]);
@@ -79,7 +83,11 @@ export default function Dashboard() {
   }, [user, userProfile, authLoading, profileLoading, router]);
 
   const dailyGoal = userProfile?.tdeeGoal || 2000;
-  const meals = allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+  
+  const meals = useMemo(() => {
+    if (!date) return [];
+    return allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+  }, [allMeals, date]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -179,12 +187,11 @@ export default function Dashboard() {
     setEditingMeal(null);
   };
 
-  if (authLoading || profileLoading) return <div className="p-20 text-center"><Zap className="animate-spin inline mr-2 text-primary" /> Caricamento profilo...</div>;
+  if (authLoading || profileLoading || !date) return <div className="p-20 text-center"><Zap className="animate-spin inline mr-2 text-primary" /> Caricamento profilo...</div>;
   if (!user) return <div className="p-20 text-center">Effettua il login per accedere.</div>;
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
-      {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
@@ -214,7 +221,6 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 lg:ml-64 lg:mr-80 p-6 lg:p-10">
         <header className="flex items-center justify-between mb-10">
           <div>
@@ -235,7 +241,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Calorie Progress Section */}
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 mb-12">
           <Card className="xl:col-span-2 border-none rounded-[32px] bg-white nutrio-shadow p-8 flex flex-col items-center">
             <div className="relative w-full aspect-square max-w-[240px]">
@@ -274,7 +279,6 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          {/* Macros Summary */}
           <div className="xl:col-span-3 flex flex-col gap-6">
             <MacroRow icon={<Dumbbell className="text-blue-500" size={18} />} label="Proteine" current={totals.protein} goal={150} color="bg-blue-500" bgColor="bg-blue-50" />
             <MacroRow icon={<Utensils className="text-yellow-500" size={18} />} label="Carboidrati" current={totals.carbs} goal={300} color="bg-yellow-500" bgColor="bg-yellow-50" />
@@ -282,7 +286,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Meals Section */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-900">Pasti di Oggi</h2>
@@ -369,7 +372,6 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Edit Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="rounded-[32px] p-8 border-none bg-white">
             <DialogHeader><DialogTitle className="text-2xl font-bold">Modifica Pasto</DialogTitle></DialogHeader>
@@ -387,7 +389,6 @@ export default function Dashboard() {
         </Dialog>
       </main>
 
-      {/* Right Sidebar - Insights & Water */}
       <aside className="w-80 bg-white/50 border-l hidden 2xl:flex flex-col py-10 px-8 fixed right-0 h-full overflow-y-auto">
         <h3 className="text-xl font-bold mb-6">Insights IA</h3>
         
@@ -451,13 +452,13 @@ function MealCard({ meal, onDelete, onEdit }: any) {
   return (
     <Card className="border-none rounded-[28px] bg-white nutrio-shadow overflow-hidden p-5 flex items-center gap-5 group transition-all hover:scale-[1.01]">
       <div className="relative w-20 h-20 shrink-0">
-        <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} className="w-full h-full object-cover rounded-2xl" />
+        <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} alt={meal.name} className="w-full h-full object-cover rounded-2xl" />
         <div className="absolute -top-2 -left-2 bg-primary text-white text-[9px] font-extrabold px-2 py-1 rounded-full border-2 border-white uppercase">{meal.type}</div>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="font-bold text-slate-900 truncate">{meal.name}</h3>
-          <span className="text-[10px] text-slate-400 font-medium">12:30</span>
+          <span className="text-[10px] text-slate-400 font-medium">Pasto registrato</span>
         </div>
         <p className="text-[11px] text-slate-400 truncate mb-3">{meal.description}</p>
         <div className="flex gap-2">

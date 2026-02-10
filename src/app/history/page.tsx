@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
@@ -21,14 +21,19 @@ import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 export default function HistoryPage() {
   const { user } = useAuth();
   const db = useFirestore();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMeal, setEditingMeal] = useState<any>(null);
 
-  const mealsQuery = useMemo(() => user ? collection(db!, 'users', user.uid, 'meals') : null, [db, user]);
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, []);
+
+  const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
   const { data: allMeals = [] } = useCollection(mealsQuery);
 
   const mealsForSelectedDay = useMemo(() => {
+    if (!selectedDate) return [];
     return allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd'));
   }, [allMeals, selectedDate]);
 
@@ -61,7 +66,7 @@ export default function HistoryPage() {
     setIsEditModalOpen(false);
   };
 
-  if (!user) return <div className="p-20 text-center">Caricamento...</div>;
+  if (!user || !selectedDate) return <div className="p-20 text-center">Caricamento...</div>;
 
   return (
     <div className="flex min-h-screen bg-[#f6f8f7]">
@@ -129,7 +134,9 @@ export default function HistoryPage() {
                 <div className="space-y-4">
                   {mealsForSelectedDay.map((meal: any) => (
                     <div key={meal.id} className="group flex items-center p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-100">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden mr-5 shadow-sm bg-slate-100"><img src={meal.image || 'https://picsum.photos/seed/food/100/100'} className="w-full h-full object-cover" /></div>
+                      <div className="w-16 h-16 rounded-xl overflow-hidden mr-5 shadow-sm bg-slate-100">
+                        <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} alt={meal.name} className="w-full h-full object-cover" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <h5 className="font-bold text-slate-900 truncate">{meal.name}</h5>
                         <p className="text-[11px] text-slate-400 uppercase font-bold">{meal.type}</p>
