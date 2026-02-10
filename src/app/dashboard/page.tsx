@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, BarChart2, Utensils, 
-  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check, Zap, Scale
+  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check, Zap, Scale, ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -57,21 +57,27 @@ interface Meal {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const db = useFirestore();
   
   const [date, setDate] = useState<Date>(new Date());
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const [mealType, setMealType] = useState('pranzo');
   
-  // Fetch ingredients and meals from Firestore
-  const ingredientsQuery = useMemo(() => user ? collection(db!, 'users', user.uid, 'ingredients') : null, [db, user]);
-  const mealsQuery = useMemo(() => user ? collection(db!, 'users', user.uid, 'meals') : null, [db, user]);
-  const userProfileQuery = useMemo(() => user ? doc(db!, 'users', user.uid) : null, [db, user]);
+  const ingredientsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'ingredients') : null, [db, user]);
+  const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
+  const userProfileQuery = useMemo(() => user && db ? doc(db, 'users', user.uid) : null, [db, user]);
 
   const { data: allowedIngredients = [] } = useCollection(ingredientsQuery);
   const { data: allMeals = [] } = useCollection(mealsQuery);
-  const { data: userProfile } = useDoc(userProfileQuery);
+  const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
+
+  // Redirect to onboarding if profile is missing (new user)
+  useEffect(() => {
+    if (!authLoading && !profileLoading && user && !userProfile) {
+      router.push('/onboarding');
+    }
+  }, [user, userProfile, authLoading, profileLoading, router]);
 
   const dailyGoal = userProfile?.tdeeGoal || 2000;
   const meals = allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
@@ -174,10 +180,12 @@ export default function Dashboard() {
     setEditingMeal(null);
   };
 
-  if (!user) return <div className="p-20 text-center">Caricamento...</div>;
+  if (authLoading || profileLoading) return <div className="p-20 text-center"><Zap className="animate-spin inline mr-2 text-nutrio-mint" /> Caricamento profilo...</div>;
+  if (!user) return <div className="p-20 text-center">Effettua il login per accedere.</div>;
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
+      {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 bg-nutrio-mint rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
@@ -207,6 +215,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* Main Content */}
       <main className="flex-1 lg:ml-64 lg:mr-80 p-6 lg:p-10">
         <header className="flex items-center justify-between mb-10">
           <div>
@@ -227,13 +236,25 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {/* Calorie Progress Section */}
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 mb-12">
           <Card className="xl:col-span-2 border-none rounded-[32px] bg-white nutrio-shadow p-8 flex flex-col items-center">
             <div className="relative w-full aspect-square max-w-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={chartData} innerRadius="85%" outerRadius="100%" startAngle={220} endAngle={-40} paddingAngle={0} dataKey="value" stroke="none" cornerRadius={40}>
-                    <Cell fill="#4ADE80" /><Cell fill="#F1F5F9" />
+                  <Pie 
+                    data={chartData} 
+                    innerRadius="85%" 
+                    outerRadius="100%" 
+                    startAngle={220} 
+                    endAngle={-40} 
+                    paddingAngle={0} 
+                    dataKey="value" 
+                    stroke="none" 
+                    cornerRadius={40}
+                  >
+                    <Cell fill="#4ADE80" />
+                    <Cell fill="#F1F5F9" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
@@ -253,6 +274,8 @@ export default function Dashboard() {
               </div>
             </div>
           </Card>
+
+          {/* Macros Summary */}
           <div className="xl:col-span-3 flex flex-col gap-6">
             <MacroRow icon={<Dumbbell className="text-blue-500" size={18} />} label="Proteine" current={totals.protein} goal={150} color="bg-blue-500" bgColor="bg-blue-50" />
             <MacroRow icon={<Utensils className="text-yellow-500" size={18} />} label="Carboidrati" current={totals.carbs} goal={300} color="bg-yellow-500" bgColor="bg-yellow-50" />
@@ -260,6 +283,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Meals Section */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-900">Pasti di Oggi</h2>
@@ -301,10 +325,30 @@ export default function Dashboard() {
                           {allowedIngredients.map((ing: any) => {
                             const selected = selectedIngredients.find(si => si.id === ing.id);
                             return (
-                              <div key={ing.id} onClick={() => toggleIngredientSelection(ing)} className={cn("p-4 rounded-2xl border-2 cursor-pointer", selected ? "border-nutrio-mint bg-nutrio-mint/5" : "border-slate-100 bg-white")}>
-                                <div className="flex justify-between items-start mb-1 font-bold text-sm"><span>{ing.name}</span>{selected && <Check size={16} className="text-nutrio-mint" />}</div>
+                              <div 
+                                key={ing.id} 
+                                onClick={() => toggleIngredientSelection(ing)} 
+                                className={cn(
+                                  "p-4 rounded-2xl border-2 cursor-pointer transition-all", 
+                                  selected ? "border-nutrio-mint bg-nutrio-mint/5" : "border-slate-100 bg-white hover:border-slate-200"
+                                )}
+                              >
+                                <div className="flex justify-between items-start mb-1 font-bold text-sm">
+                                  <span>{ing.name}</span>
+                                  {selected && <Check size={16} className="text-nutrio-mint" />}
+                                </div>
                                 <p className="text-[10px] text-slate-400">{ing.calories} kcal/100g</p>
-                                {selected && <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}><Input type="number" value={selected.amount} onChange={e => updateAmount(ing.id, Number(e.target.value))} className="h-8 w-20 text-xs" /><span className="text-[10px] font-bold">g</span></div>}
+                                {selected && (
+                                  <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                    <Input 
+                                      type="number" 
+                                      value={selected.amount} 
+                                      onChange={e => updateAmount(ing.id, Number(e.target.value))} 
+                                      className="h-8 w-20 text-xs" 
+                                    />
+                                    <span className="text-[10px] font-bold">g</span>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -317,6 +361,7 @@ export default function Dashboard() {
               </DialogContent>
             </Dialog>
           </div>
+          
           <div className="space-y-6">
             {meals.map((meal: any) => (
               <MealCard key={meal.id} meal={meal} onDelete={() => handleDeleteMeal(meal.id)} onEdit={() => handleEditMeal(meal)} />
@@ -325,6 +370,7 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* Edit Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="rounded-[32px] p-8 border-none bg-white">
             <DialogHeader><DialogTitle className="text-2xl font-bold">Modifica Pasto</DialogTitle></DialogHeader>
@@ -342,11 +388,42 @@ export default function Dashboard() {
         </Dialog>
       </main>
 
+      {/* Right Sidebar - Insights & Water */}
       <aside className="w-80 bg-white/50 border-l hidden 2xl:flex flex-col py-10 px-8 fixed right-0 h-full overflow-y-auto">
         <h3 className="text-xl font-bold mb-6">Insights IA</h3>
+        
         <Card className="border-none rounded-[28px] bg-[#E8FFF1] p-6 mb-10">
-          <div className="flex items-center gap-2 text-nutrio-mint mb-4"><Sparkles size={16} /><span className="text-xs font-bold uppercase">Consiglio Smart</span></div>
-          <p className="text-sm font-medium text-slate-600">Hai raggiunto il <span className="text-nutrio-mint font-bold">{Math.round((totals.protein/150)*100)}%</span> dell'obiettivo proteico.</p>
+          <div className="flex items-center gap-2 text-nutrio-mint mb-4">
+            <Sparkles size={16} />
+            <span className="text-xs font-bold uppercase tracking-widest">Consiglio Smart</span>
+          </div>
+          <p className="text-sm font-medium text-slate-600 leading-relaxed">
+            Hai raggiunto il <span className="text-nutrio-mint font-bold">{Math.round((totals.protein/150)*100)}%</span> dell'obiettivo proteico. Ottimo lavoro!
+          </p>
+        </Card>
+
+        <div className="mb-10">
+          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Idratazione</h4>
+          <div className="bg-white rounded-[28px] p-6 nutrio-shadow flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                <Droplets size={20} />
+              </div>
+              <div>
+                <div className="font-bold">1.2L</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase">Obiettivo: 2L</div>
+              </div>
+            </div>
+            <Button size="icon" variant="ghost" className="rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 h-10 w-10">
+              <Plus size={20} />
+            </Button>
+          </div>
+        </div>
+
+        <Card className="border-none rounded-[32px] bg-slate-900 p-8 text-white mt-auto">
+          <h4 className="text-lg font-bold mb-2">Passa a Pro 🚀</h4>
+          <p className="text-xs text-slate-400 mb-6">Analisi avanzate e piani personalizzati illimitati.</p>
+          <Button className="w-full bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-bold rounded-2xl h-12">SCOPRI DI PIÙ</Button>
         </Card>
       </aside>
     </div>
@@ -359,8 +436,13 @@ function MacroRow({ icon, label, current, goal, color, bgColor }: any) {
     <div className="bg-white rounded-[28px] p-6 flex items-center gap-6 nutrio-shadow">
       <div className={cn("w-14 h-14 rounded-full flex items-center justify-center shrink-0", bgColor)}>{icon}</div>
       <div className="flex-1 space-y-2">
-        <div className="flex justify-between items-center"><span className="text-sm font-bold">{label}</span><span className="text-xs font-bold text-slate-400">{Math.round(current)}g / {goal}g</span></div>
-        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div className={cn("h-full transition-all duration-1000", color)} style={{ width: `${progress}%` }}></div></div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-bold text-slate-700">{label}</span>
+          <span className="text-xs font-bold text-slate-400">{Math.round(current)}g / {goal}g</span>
+        </div>
+        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className={cn("h-full transition-all duration-1000", color)} style={{ width: `${progress}%` }}></div>
+        </div>
       </div>
     </div>
   );
@@ -368,25 +450,35 @@ function MacroRow({ icon, label, current, goal, color, bgColor }: any) {
 
 function MealCard({ meal, onDelete, onEdit }: any) {
   return (
-    <Card className="border-none rounded-[28px] bg-white nutrio-shadow overflow-hidden p-5 flex items-center gap-5 group transition-transform hover:scale-[1.01]">
+    <Card className="border-none rounded-[28px] bg-white nutrio-shadow overflow-hidden p-5 flex items-center gap-5 group transition-all hover:scale-[1.01]">
       <div className="relative w-20 h-20 shrink-0">
         <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} className="w-full h-full object-cover rounded-2xl" />
         <div className="absolute -top-2 -left-2 bg-nutrio-mint text-white text-[9px] font-extrabold px-2 py-1 rounded-full border-2 border-white uppercase">{meal.type}</div>
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-slate-900 truncate">{meal.name}</h3>
-        <p className="text-[11px] text-slate-400 truncate mb-2">{meal.description}</p>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-bold text-slate-900 truncate">{meal.name}</h3>
+          <span className="text-[10px] text-slate-400 font-medium">12:30</span>
+        </div>
+        <p className="text-[11px] text-slate-400 truncate mb-3">{meal.description}</p>
         <div className="flex gap-2">
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-500">{meal.macros?.protein || 0}g P</span>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-500">{meal.macros?.carbs || 0}g C</span>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-500">{meal.macros?.fat || 0}g G</span>
+          <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-500">{meal.macros?.protein || 0}g P</span>
+          <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-500">{meal.macros?.carbs || 0}g C</span>
+          <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-500">{meal.macros?.fat || 0}g G</span>
         </div>
       </div>
-      <div className="text-right flex items-center gap-2">
-        <div><div className="font-bold text-lg">{meal.calories}</div><div className="text-[9px] text-slate-400 font-bold uppercase">Kcal</div></div>
-        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-nutrio-mint" onClick={onEdit}><Pencil size={14} /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={onDelete}><Trash2 size={14} /></Button>
+      <div className="text-right flex items-center gap-4">
+        <div>
+          <div className="font-black text-xl text-slate-900">{meal.calories}</div>
+          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Kcal</div>
+        </div>
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-nutrio-mint hover:bg-nutrio-mint/5 rounded-full" onClick={onEdit}>
+            <Pencil size={16} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full" onClick={onDelete}>
+            <Trash2 size={16} />
+          </Button>
         </div>
       </div>
     </Card>
