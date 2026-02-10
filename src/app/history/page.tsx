@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
-  ChevronLeft, ChevronRight, Plus, Trash2, LayoutGrid, History, BarChart2, Utensils, Settings, Pencil
+  ChevronLeft, ChevronRight, Plus, Trash2, LayoutGrid, History, BarChart2, Utensils, Settings, Pencil, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -66,12 +66,13 @@ export default function HistoryPage() {
   return (
     <div className="flex min-h-screen bg-[#f6f8f7]">
       <nav className="fixed left-0 top-0 h-full w-20 bg-white border-r flex flex-col items-center py-8 z-50">
-        <div className="w-12 h-12 bg-nutrio-mint rounded-xl flex items-center justify-center text-white mb-12 shadow-lg"><Utensils /></div>
+        <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white mb-12 shadow-lg"><Utensils /></div>
         <div className="flex flex-col space-y-8 flex-1">
-          <Link href="/dashboard" className="p-3 text-slate-400 hover:text-nutrio-mint"><LayoutGrid size={24} /></Link>
-          <Link href="/history" className="p-3 text-nutrio-mint bg-nutrio-mint/10 rounded-2xl"><History size={24} /></Link>
+          <Link href="/dashboard" className="p-3 text-slate-400 hover:text-primary"><LayoutGrid size={24} /></Link>
+          <Link href="/history" className="p-3 text-primary bg-primary/10 rounded-2xl"><History size={24} /></Link>
+          <Link href="/profile" className="p-3 text-slate-400 hover:text-primary"><User size={24} /></Link>
         </div>
-        <Link href="/dashboard" className="p-3 text-slate-400"><Settings size={24} /></Link>
+        <Link href="/profile" className="p-3 text-slate-400"><Settings size={24} /></Link>
       </nav>
 
       <main className="ml-20 p-8 max-w-6xl mx-auto w-full">
@@ -80,7 +81,12 @@ export default function HistoryPage() {
             <h1 className="text-3xl font-extrabold text-slate-900">Cronologia e Log</h1>
             <p className="text-slate-500">Monitora i tuoi progressi giornalieri.</p>
           </div>
-          <Avatar className="w-10 h-10 border-2 border-white shadow-sm"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>{user.displayName?.[0]}</AvatarFallback></Avatar>
+          <Link href="/profile">
+            <Avatar className="w-10 h-10 border-2 border-white shadow-sm hover:ring-2 hover:ring-primary transition-all">
+              <AvatarImage src={user.photoURL || undefined} />
+              <AvatarFallback>{user.displayName?.[0]}</AvatarFallback>
+            </Avatar>
+          </Link>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -93,16 +99,14 @@ export default function HistoryPage() {
                   <Button variant="ghost" size="icon" onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1))}><ChevronRight /></Button>
                 </div>
               </div>
-              {/* Calendario Semplificato per questa vista */}
               <div className="grid grid-cols-7 gap-3">
                 {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase">{d}</div>)}
-                {/* Visualizzazione semplificata per mostrare solo i dati del database */}
                 <div className="col-span-7 py-4 text-center text-sm text-slate-400">Seleziona un giorno per vedere i dettagli</div>
               </div>
             </Card>
 
             <div className="grid grid-cols-3 gap-6">
-              <MacroCard label="Proteine" value={`${dailyStats.protein}g`} progress={Math.min(100, (dailyStats.protein/150)*100)} color="text-nutrio-mint" bgColor="bg-nutrio-mint/10" />
+              <MacroCard label="Proteine" value={`${dailyStats.protein}g`} progress={Math.min(100, (dailyStats.protein/150)*100)} color="text-primary" bgColor="bg-primary/10" />
               <MacroCard label="Carboidrati" value={`${dailyStats.carbs}g`} progress={Math.min(100, (dailyStats.carbs/300)*100)} color="text-blue-500" bgColor="bg-blue-50" />
               <MacroCard label="Grassi" value={`${dailyStats.fat}g`} progress={Math.min(100, (dailyStats.fat/80)*100)} color="text-purple-500" bgColor="bg-purple-50" />
             </div>
@@ -124,7 +128,7 @@ export default function HistoryPage() {
                 <h4 className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Pasti Inseriti</h4>
                 <div className="space-y-4">
                   {mealsForSelectedDay.map((meal: any) => (
-                    <div key={meal.id} className="group flex items-center p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                    <div key={meal.id} className="group flex items-center p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-100">
                       <div className="w-16 h-16 rounded-xl overflow-hidden mr-5 shadow-sm bg-slate-100"><img src={meal.image || 'https://picsum.photos/seed/food/100/100'} className="w-full h-full object-cover" /></div>
                       <div className="flex-1 min-w-0">
                         <h5 className="font-bold text-slate-900 truncate">{meal.name}</h5>
@@ -134,7 +138,7 @@ export default function HistoryPage() {
                         <p className="font-bold text-lg">{meal.calories}</p>
                       </div>
                       <div className="flex ml-4 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => handleEditMeal(meal)} className="p-2 text-slate-300 hover:text-nutrio-mint"><Pencil size={18} /></button>
+                        <button onClick={() => handleEditMeal(meal)} className="p-2 text-slate-300 hover:text-primary"><Pencil size={18} /></button>
                         <button onClick={() => handleDeleteMeal(meal.id)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18} /></button>
                       </div>
                     </div>
@@ -158,7 +162,7 @@ export default function HistoryPage() {
                 </div>
               </div>
             )}
-            <DialogFooter><Button onClick={saveEditedMeal} className="bg-nutrio-mint text-white">Salva</Button></DialogFooter>
+            <DialogFooter><Button onClick={saveEditedMeal} className="bg-primary text-white">Salva</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </main>

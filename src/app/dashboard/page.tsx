@@ -8,7 +8,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, BarChart2, Utensils, 
-  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check, Zap, Scale, ArrowRight
+  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check, Zap, Scale, ArrowRight, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -72,7 +72,6 @@ export default function Dashboard() {
   const { data: allMeals = [] } = useCollection(mealsQuery);
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
 
-  // Redirect to onboarding if profile is missing (new user)
   useEffect(() => {
     if (!authLoading && !profileLoading && user && !userProfile) {
       router.push('/onboarding');
@@ -180,7 +179,7 @@ export default function Dashboard() {
     setEditingMeal(null);
   };
 
-  if (authLoading || profileLoading) return <div className="p-20 text-center"><Zap className="animate-spin inline mr-2 text-nutrio-mint" /> Caricamento profilo...</div>;
+  if (authLoading || profileLoading) return <div className="p-20 text-center"><Zap className="animate-spin inline mr-2 text-primary" /> Caricamento profilo...</div>;
   if (!user) return <div className="p-20 text-center">Effettua il login per accedere.</div>;
 
   return (
@@ -188,30 +187,30 @@ export default function Dashboard() {
       {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
         <div className="flex items-center gap-3 mb-12">
-          <div className="w-10 h-10 bg-nutrio-mint rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
             <Zap className="w-6 h-6 fill-current" />
           </div>
-          <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio<span className="text-nutrio-mint">.</span></span>
+          <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio<span className="text-primary">.</span></span>
         </div>
         <nav className="flex-1 space-y-2">
-          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm sidebar-active text-nutrio-mint">
+          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm sidebar-active text-primary">
             <LayoutGrid size={20} /> Dashboard
           </Link>
           <Link href="/history" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
             <History size={20} /> Cronologia
           </Link>
-          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
-            <BarChart2 size={20} /> Analisi
+          <Link href="/profile" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
+            <User size={20} /> Profilo
           </Link>
         </nav>
         <div className="space-y-4 pt-8 border-t">
-          <div className="bg-[#F8FAFC] rounded-2xl p-3 flex items-center gap-3">
+          <Link href="/profile" className="bg-[#F8FAFC] rounded-2xl p-3 flex items-center gap-3 hover:bg-slate-100 transition-colors">
             <Avatar className="w-10 h-10"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>{user.displayName?.[0] || 'U'}</AvatarFallback></Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-slate-900 truncate w-32">{user.displayName || 'Utente'}</span>
               <span className="text-[10px] text-slate-400 font-medium">Membro Pro</span>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
 
@@ -226,7 +225,7 @@ export default function Dashboard() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="rounded-2xl h-11 px-4 bg-white border-none shadow-sm gap-2 font-semibold">
-                  <CalendarIcon size={18} className="text-nutrio-mint" /> Oggi
+                  <CalendarIcon size={18} className="text-primary" /> Oggi
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
@@ -289,14 +288,14 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-slate-900">Pasti di Oggi</h2>
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
               <DialogTrigger asChild>
-                <Button className="rounded-2xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-bold h-12 px-8 shadow-lg shadow-nutrio-mint/20 gap-2">
+                <Button className="rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-12 px-8 shadow-lg shadow-primary/20 gap-2">
                   <Plus size={20} /> AGGIUNGI
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl rounded-[32px] p-0 overflow-hidden border-none bg-white">
                 <Tabs defaultValue="camera" className="w-full">
                   <TabsList className="w-full grid grid-cols-2 h-14 bg-slate-50 border-b">
-                    <TabsTrigger value="camera" className="data-[state=active]:bg-white"><Camera size={18} className="mr-2" /> Foto AI</TabsTrigger>
+                    <TabsTrigger value="camera" className="data-[state=active]:bg-white"><Camera size={18} className="mr-2" /> Foto IA</TabsTrigger>
                     <TabsTrigger value="manual" className="data-[state=active]:bg-white"><Utensils size={18} className="mr-2" /> Dispensa</TabsTrigger>
                   </TabsList>
                   <div className="p-8">
@@ -313,9 +312,9 @@ export default function Dashboard() {
                       </Select>
                     </div>
                     <TabsContent value="camera" className="m-0 text-center">
-                      <Camera className="w-12 h-12 text-nutrio-mint mx-auto mb-4" />
+                      <Camera className="w-12 h-12 text-primary mx-auto mb-4" />
                       <Label htmlFor="image-upload" className="block">
-                        <div className="w-full h-14 bg-nutrio-mint text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer">{isAnalyzing ? "Analisi..." : "Scegli Foto"}</div>
+                        <div className="w-full h-14 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer">{isAnalyzing ? "Analisi..." : "Scegli Foto"}</div>
                         <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isAnalyzing} />
                       </Label>
                     </TabsContent>
@@ -330,12 +329,12 @@ export default function Dashboard() {
                                 onClick={() => toggleIngredientSelection(ing)} 
                                 className={cn(
                                   "p-4 rounded-2xl border-2 cursor-pointer transition-all", 
-                                  selected ? "border-nutrio-mint bg-nutrio-mint/5" : "border-slate-100 bg-white hover:border-slate-200"
+                                  selected ? "border-primary bg-primary/5" : "border-slate-100 bg-white hover:border-slate-200"
                                 )}
                               >
                                 <div className="flex justify-between items-start mb-1 font-bold text-sm">
                                   <span>{ing.name}</span>
-                                  {selected && <Check size={16} className="text-nutrio-mint" />}
+                                  {selected && <Check size={16} className="text-primary" />}
                                 </div>
                                 <p className="text-[10px] text-slate-400">{ing.calories} kcal/100g</p>
                                 {selected && (
@@ -353,7 +352,7 @@ export default function Dashboard() {
                             );
                           })}
                         </div>
-                        <Button className="w-full h-14 bg-nutrio-mint text-white font-bold" onClick={handleBuildMeal} disabled={selectedIngredients.length === 0}>CREA PASTO</Button>
+                        <Button className="w-full h-14 bg-primary text-white font-bold" onClick={handleBuildMeal} disabled={selectedIngredients.length === 0}>CREA PASTO</Button>
                       </div>
                     </TabsContent>
                   </div>
@@ -383,7 +382,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-            <DialogFooter><Button onClick={saveEditedMeal} className="bg-nutrio-mint text-white">Salva</Button></DialogFooter>
+            <DialogFooter><Button onClick={saveEditedMeal} className="bg-primary text-white">Salva</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </main>
@@ -393,12 +392,12 @@ export default function Dashboard() {
         <h3 className="text-xl font-bold mb-6">Insights IA</h3>
         
         <Card className="border-none rounded-[28px] bg-[#E8FFF1] p-6 mb-10">
-          <div className="flex items-center gap-2 text-nutrio-mint mb-4">
+          <div className="flex items-center gap-2 text-primary mb-4">
             <Sparkles size={16} />
             <span className="text-xs font-bold uppercase tracking-widest">Consiglio Smart</span>
           </div>
           <p className="text-sm font-medium text-slate-600 leading-relaxed">
-            Hai raggiunto il <span className="text-nutrio-mint font-bold">{Math.round((totals.protein/150)*100)}%</span> dell'obiettivo proteico. Ottimo lavoro!
+            Hai raggiunto il <span className="text-primary font-bold">{Math.round((totals.protein/150)*100)}%</span> dell'obiettivo proteico. Ottimo lavoro!
           </p>
         </Card>
 
@@ -423,7 +422,7 @@ export default function Dashboard() {
         <Card className="border-none rounded-[32px] bg-slate-900 p-8 text-white mt-auto">
           <h4 className="text-lg font-bold mb-2">Passa a Pro 🚀</h4>
           <p className="text-xs text-slate-400 mb-6">Analisi avanzate e piani personalizzati illimitati.</p>
-          <Button className="w-full bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-bold rounded-2xl h-12">SCOPRI DI PIÙ</Button>
+          <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl h-12">SCOPRI DI PIÙ</Button>
         </Card>
       </aside>
     </div>
@@ -453,7 +452,7 @@ function MealCard({ meal, onDelete, onEdit }: any) {
     <Card className="border-none rounded-[28px] bg-white nutrio-shadow overflow-hidden p-5 flex items-center gap-5 group transition-all hover:scale-[1.01]">
       <div className="relative w-20 h-20 shrink-0">
         <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} className="w-full h-full object-cover rounded-2xl" />
-        <div className="absolute -top-2 -left-2 bg-nutrio-mint text-white text-[9px] font-extrabold px-2 py-1 rounded-full border-2 border-white uppercase">{meal.type}</div>
+        <div className="absolute -top-2 -left-2 bg-primary text-white text-[9px] font-extrabold px-2 py-1 rounded-full border-2 border-white uppercase">{meal.type}</div>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -473,7 +472,7 @@ function MealCard({ meal, onDelete, onEdit }: any) {
           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Kcal</div>
         </div>
         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-nutrio-mint hover:bg-nutrio-mint/5 rounded-full" onClick={onEdit}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-primary hover:bg-primary/5 rounded-full" onClick={onEdit}>
             <Pencil size={16} />
           </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full" onClick={onDelete}>
