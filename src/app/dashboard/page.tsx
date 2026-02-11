@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -12,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -39,7 +38,6 @@ export default function Dashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // Stati per la creazione manuale del pasto
   const [manualSearch, setManualSearch] = useState('');
   const [selectedIngredients, setSelectedIngredients] = useState<any[]>([]);
   const [mealType, setMealType] = useState('pranzo');
@@ -51,6 +49,24 @@ export default function Dashboard() {
     setDate(new Date());
   }, []);
 
+  const userProfileRef = useMemo(() => {
+    if (!user || !db) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
+
+  const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
+
+  useEffect(() => {
+    if (mounted && !authLoading) {
+      if (!user) {
+        router.replace('/');
+      } else if (!profileLoading && userProfile === null) {
+        // Reindirizza all'onboarding solo se siamo SICURI che il profilo non esista
+        router.push('/onboarding');
+      }
+    }
+  }, [user, userProfile, authLoading, profileLoading, router, mounted]);
+
   const mealsQuery = useMemo(() => {
     if (!user || !db) return null;
     return collection(db, 'users', user.uid, 'meals');
@@ -61,24 +77,8 @@ export default function Dashboard() {
     return collection(db, 'users', user.uid, 'ingredients');
   }, [db, user]);
 
-  const userProfileRef = useMemo(() => {
-    if (!user || !db) return null;
-    return doc(db, 'users', user.uid);
-  }, [db, user]);
-
   const { data: allMeals = [] } = useCollection(mealsQuery);
   const { data: allIngredients = [] } = useCollection(ingredientsQuery as any);
-  const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
-
-  useEffect(() => {
-    if (mounted && !authLoading) {
-      if (!user) {
-        router.replace('/');
-      } else if (!profileLoading && userProfile === null) {
-        router.push('/onboarding');
-      }
-    }
-  }, [user, userProfile, authLoading, profileLoading, router, mounted]);
 
   const dailyGoal = userProfile?.tdeeGoal || 2000;
   
@@ -315,7 +315,6 @@ export default function Dashboard() {
 
                     <TabsContent value="manual" className="m-0 space-y-8">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Sezione Sinistra: Selezione Ingredienti */}
                         <div className="space-y-6">
                           <div className="relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
@@ -352,7 +351,6 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        {/* Sezione Destra: Composizione Pasto */}
                         <div className="bg-slate-50 rounded-[2rem] p-6 space-y-6">
                           <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                             <Sparkles size={16} className="text-primary" /> Il tuo Piatto
@@ -510,4 +508,3 @@ function MealCard({ meal }: any) {
     </Card>
   );
 }
-

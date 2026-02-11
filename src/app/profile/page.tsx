@@ -14,7 +14,7 @@ import { doc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export default function ProfilePage() {
   const pathname = usePathname();
@@ -28,8 +28,12 @@ export default function ProfilePage() {
     setMounted(true);
   }, []);
 
-  const userProfileQuery = user && db ? doc(db, 'users', user.uid) : null;
-  const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
+  const userProfileRef = useMemo(() => {
+    if (!user || !db) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
+
+  const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
 
   useEffect(() => {
     if (mounted && !authLoading && !user) {
@@ -78,7 +82,12 @@ export default function ProfilePage() {
       </aside>
 
       <main className="flex-1 lg:ml-64 p-6 lg:p-10">
-        <div className="flex flex-col items-center text-center mb-12">
+        <header className="mb-10">
+          <h1 className="text-2xl font-bold text-slate-900">Il Tuo Account</h1>
+          <p className="text-slate-400 font-medium text-sm">Gestisci le tue impostazioni e visualizza il tuo piano.</p>
+        </header>
+
+        <div className="flex flex-col items-center text-center mb-12 bg-white p-10 rounded-[40px] shadow-sm border border-slate-100">
           <div className="relative group mb-6">
             <Avatar className="w-32 h-32 border-4 border-white shadow-2xl">
               <AvatarImage src={user.photoURL || undefined} />
@@ -90,7 +99,7 @@ export default function ProfilePage() {
               <Camera size={18} className="text-slate-400" />
             </div>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-1">{user.displayName}</h1>
+          <h2 className="text-3xl font-black text-slate-900 mb-1">{user.displayName}</h2>
           <p className="text-slate-500 font-medium flex items-center justify-center gap-2">
             <Mail size={16} /> {user.email}
           </p>
@@ -102,7 +111,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           <Card className="p-8 border-none shadow-xl rounded-[40px] bg-white">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900">
-              <Target className="text-primary" size={20} /> Il Tuo Piano
+              <Target className="text-primary" size={20} /> Piano Nutrizionale
             </h3>
             <div className="space-y-6">
               <div className="flex justify-between items-center p-6 bg-slate-50 rounded-[28px]">
@@ -111,7 +120,7 @@ export default function ProfilePage() {
                   <p className="text-2xl font-black text-slate-900">{userProfile?.tdeeGoal || '2000'} <span className="text-sm text-slate-400">kcal</span></p>
                 </div>
                 <Button variant="outline" size="sm" asChild className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5">
-                  <Link href="/onboarding">Modifica</Link>
+                  <Link href="/onboarding">Aggiorna Parametri</Link>
                 </Button>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -128,25 +137,34 @@ export default function ProfilePage() {
                   <p className="text-sm font-bold text-slate-900">80g</p>
                 </div>
               </div>
+              <div className="pt-4 border-t border-slate-50">
+                <p className="text-[11px] text-slate-400 leading-relaxed italic">
+                  Questi valori sono calcolati in base ai parametri fisici inseriti durante il setup iniziale.
+                </p>
+              </div>
             </div>
           </Card>
 
           <div className="space-y-4">
-            <ProfileMenuItem icon={<User size={18} />} label="Informazioni Personali" />
-            <ProfileMenuItem icon={<Bell size={18} />} label="Notifiche" />
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest ml-4 mb-2">Impostazioni</h3>
+            <ProfileMenuItem icon={<Settings size={18} />} label="Preferenze Account" />
+            <ProfileMenuItem icon={<Bell size={18} />} label="Notifiche e Avvisi" />
             <ProfileMenuItem icon={<Shield size={18} />} label="Privacy e Sicurezza" />
-            <button 
-              onClick={handleLogout}
-              className="w-full flex items-center justify-between p-6 bg-white rounded-[32px] shadow-sm hover:bg-red-50 transition-all group border border-transparent hover:border-red-100"
-            >
-              <div className="flex items-center gap-4 text-red-500 font-bold">
-                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center transition-colors group-hover:bg-red-200">
-                  <LogOut size={20} />
+            
+            <div className="pt-6">
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center justify-between p-6 bg-white rounded-[32px] shadow-sm hover:bg-red-50 transition-all group border border-transparent hover:border-red-100"
+              >
+                <div className="flex items-center gap-4 text-red-500 font-bold">
+                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center transition-colors group-hover:bg-red-200">
+                    <LogOut size={20} />
+                  </div>
+                  Esci dall'account
                 </div>
-                Esci dall'account
-              </div>
-              <ChevronRight size={20} className="text-red-200 group-hover:text-red-500" />
-            </button>
+                <ChevronRight size={20} className="text-red-200 group-hover:text-red-500" />
+              </button>
+            </div>
           </div>
         </div>
       </main>

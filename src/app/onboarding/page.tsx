@@ -33,6 +33,8 @@ export default function Onboarding() {
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(1);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  
   const [formData, setFormData] = useState({
     gender: 'male' as 'male' | 'female',
     age: 25,
@@ -64,16 +66,17 @@ export default function Onboarding() {
 
   useEffect(() => {
     async function checkProfile() {
-      if (mounted && user && db && !isFinishing) {
+      if (mounted && user && db) {
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
-        if (docSnap.exists()) {
+        if (docSnap.exists() && !isFinishing) {
           router.replace('/dashboard');
+        } else {
+          setCheckingProfile(false);
         }
+      } else if (mounted && !authLoading && !user) {
+        router.replace('/');
       }
-    }
-    if (!authLoading && !user && mounted) {
-      router.replace('/');
     }
     checkProfile();
   }, [user, authLoading, db, mounted, router, isFinishing]);
@@ -151,10 +154,7 @@ export default function Onboarding() {
   };
 
   const finish = async () => {
-    if (!user || !db) {
-      toast({ variant: "destructive", title: "Errore", description: "Devi essere loggato." });
-      return;
-    }
+    if (!user || !db) return;
 
     setIsFinishing(true);
     const tdee = calculateTDEE({
@@ -169,7 +169,12 @@ export default function Onboarding() {
         onboardingCompleted: true,
         setupDate: new Date().toISOString(),
         displayName: user.displayName,
-        email: user.email
+        email: user.email,
+        gender: formData.gender,
+        age: formData.age,
+        weight: formData.weight,
+        height: formData.height,
+        activityLevel: formData.activityLevel
       }, { merge: true });
 
       const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
@@ -190,10 +195,10 @@ export default function Onboarding() {
     }
   };
 
-  if (!mounted || authLoading) return (
+  if (!mounted || authLoading || checkingProfile) return (
     <div className="min-h-screen bg-[#F7F8FA] flex flex-col items-center justify-center">
       <Loader2 className="w-10 h-10 text-primary animate-spin" />
-      <p className="mt-4 text-slate-400 font-medium">Caricamento...</p>
+      <p className="mt-4 text-slate-400 font-medium">Verifica profilo in corso...</p>
     </div>
   );
 

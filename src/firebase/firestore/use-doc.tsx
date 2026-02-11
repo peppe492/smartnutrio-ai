@@ -17,8 +17,8 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
 
   useEffect(() => {
     if (!docRef) {
-      // Se non c'è un riferimento, il caricamento è tecnicamente finito (senza dati)
-      setLoading(false);
+      // Non resettiamo loading a false se stiamo aspettando un riferimento (es. caricamento auth)
+      // ma se il riferimento non viene proprio fornito (es. logout), resettiamo lo stato
       setData(null);
       return;
     }
