@@ -14,8 +14,13 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!docRef) return;
+    if (!docRef) {
+      setLoading(false);
+      setData(null);
+      return;
+    }
 
+    setLoading(true);
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot: DocumentSnapshot<T>) => {

@@ -14,8 +14,13 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!query) return;
+    if (!query) {
+      setLoading(false);
+      setData([]);
+      return;
+    }
 
+    setLoading(true);
     const unsubscribe = onSnapshot(
       query,
       (snapshot: QuerySnapshot<T>) => {

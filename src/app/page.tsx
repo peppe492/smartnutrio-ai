@@ -17,8 +17,8 @@ export default function Home() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    if (user && !loading) {
-      router.push('/dashboard');
+    if (!loading && user) {
+      router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
@@ -37,12 +37,14 @@ export default function Home() {
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      await signInWithPopup(auth, provider);
-      toast({
-        title: "Accesso effettuato",
-        description: "Benvenuto su SmartNutrio AI!",
-      });
-      router.push('/dashboard');
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        toast({
+          title: "Accesso effettuato",
+          description: "Benvenuto su SmartNutrio AI!",
+        });
+        // Il reindirizzamento avverrà tramite l'useEffect sopra
+      }
     } catch (error: any) {
       console.error("Login Error:", error);
       let message = "Impossibile completare il login con Google. Riprova.";
@@ -60,7 +62,6 @@ export default function Home() {
         title: "Errore di accesso",
         description: message,
       });
-    } finally {
       setIsLoggingIn(false);
     }
   };
@@ -93,7 +94,7 @@ export default function Home() {
             className="w-full h-14 text-lg rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold shadow-md"
           >
             {isLoggingIn ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-            Entra con Google
+            {isLoggingIn ? "Accesso in corso..." : "Entra con Google"}
           </Button>
           
           <div className="grid grid-cols-2 gap-4">
