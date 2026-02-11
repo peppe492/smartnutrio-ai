@@ -2,11 +2,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isValid, parseISO, addMonths, subMonths } from 'date-fns';
+import { format, isSameDay, isValid, parseISO, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
   Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets,
-  Coffee, Sun, Moon, Apple, Clock, Calendar as CalendarIcon, ChevronRight, ChevronLeft, ChevronDown
+  Coffee, Sun, Moon, Apple, Calendar as CalendarIcon, ChevronRight, ChevronLeft, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -46,7 +46,6 @@ export default function HistoryPage() {
 
   const dailyStatusMap = useMemo(() => {
     const map: Record<string, 'met' | 'exceeded' | 'none'> = {};
-    
     const mealsByDate: Record<string, number> = {};
     
     allMeals.forEach((meal: any) => {
@@ -222,7 +221,7 @@ export default function HistoryPage() {
             <Card className="xl:col-span-1 bg-white p-8 rounded-[40px] border-none shadow-xl flex flex-col items-center">
               <div className="w-full flex items-center justify-between mb-8">
                 <div className="flex items-center gap-1.5 cursor-pointer">
-                  <span className="text-lg font-bold text-slate-900">{format(currentMonth, 'MMMM yyyy', { locale: it })}</span>
+                  <span className="text-lg font-bold text-slate-900 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: it })}</span>
                   <ChevronDown size={16} className="text-slate-400" />
                 </div>
                 <div className="flex gap-4">
@@ -248,23 +247,21 @@ export default function HistoryPage() {
                   head_cell: "text-slate-300 font-bold text-[10px] uppercase w-10 text-center tracking-widest",
                   row: "flex justify-between w-full mt-4",
                   cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                  day: cn(
-                    "h-10 w-10 p-0 font-bold transition-all rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-50",
-                  ),
-                  day_selected: "bg-[#4ADE80] text-white hover:bg-[#4ADE80] hover:text-white focus:bg-[#4ADE80] focus:text-white shadow-lg shadow-[#4ADE80]/30 scale-125 z-10",
-                  day_today: "text-primary border border-primary/20",
-                  day_outside: "text-slate-200 opacity-50",
+                  day: "h-10 w-10 p-0 font-bold transition-all rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-50",
+                  day_selected: "hidden", // We use a custom Day component to handle selection visuals
+                  day_today: "text-primary",
+                  day_outside: "text-slate-200 opacity-20",
                 }}
                 components={{
                   Day: (props: any) => {
-                    const { day, modifiers } = props;
+                    const { day } = props;
                     const date = day.date;
                     if (!date || !isValid(date)) return null;
 
                     const dateStr = format(date, 'yyyy-MM-dd');
                     const status = dailyStatusMap[dateStr];
                     const isSelected = selectedDate && isSameDay(date, selectedDate);
-                    const isOutside = !isSameDay(date, currentMonth) && format(date, 'MM') !== format(currentMonth, 'MM');
+                    const isOutside = !isSameMonth(date, currentMonth);
                     
                     return (
                       <div 
@@ -275,19 +272,19 @@ export default function HistoryPage() {
                         )}
                       >
                         <div className={cn(
-                          "h-10 w-10 flex items-center justify-center rounded-full font-bold transition-all",
-                          isSelected ? "bg-[#4ADE80] text-white scale-125 shadow-lg shadow-[#4ADE80]/20" : "text-slate-600 hover:bg-slate-50"
+                          "h-11 w-11 flex flex-col items-center justify-center rounded-full font-bold transition-all relative",
+                          isSelected ? "bg-[#4ADE80] text-white scale-125 shadow-lg shadow-[#4ADE80]/20 z-10" : "text-slate-600 hover:bg-slate-50"
                         )}>
                           {format(date, 'd')}
+                          {isSelected && (
+                            <div className="w-1 h-1 rounded-full bg-white mt-0.5" />
+                          )}
                         </div>
                         {!isSelected && status && (
                           <div className={cn(
-                            "absolute -bottom-1 w-1.5 h-1.5 rounded-full",
+                            "absolute bottom-0 w-1 h-1 rounded-full",
                             status === 'met' ? "bg-emerald-400" : "bg-orange-400"
                           )} />
-                        )}
-                        {isSelected && (
-                           <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-white z-20" />
                         )}
                       </div>
                     );
@@ -298,15 +295,15 @@ export default function HistoryPage() {
               <div className="w-full mt-10 pt-8 border-t border-slate-50 flex flex-wrap justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Obiettivo OK</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Goal Met</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-orange-400" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Superato</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Exceeded</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-slate-200" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Nessun Dato</span>
+                  <div className="w-2 h-2 rounded-full bg-slate-100" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">No Entry</span>
                 </div>
               </div>
             </Card>
