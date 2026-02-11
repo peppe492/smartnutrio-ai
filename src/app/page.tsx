@@ -1,13 +1,11 @@
-
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Smartphone, Loader2, Apple, Zap, Sparkles } from 'lucide-react';
 import { useAuth, useFirebase } from '@/firebase';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
@@ -24,26 +22,43 @@ export default function Home() {
   }, [user, loading, router]);
 
   const handleGoogleLogin = async () => {
-    if (!auth) return;
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Errore Firebase",
+        description: "L'istanza Auth non è pronta. Ricarica la pagina.",
+      });
+      return;
+    }
     
     setIsLoggingIn(true);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
+      await setPersistence(auth, browserLocalPersistence);
       const result = await signInWithPopup(auth, provider);
       if (result.user) {
         toast({
           title: "Accesso effettuato",
           description: "Benvenuto su SmartNutrio AI!",
         });
+        router.push('/dashboard');
       }
     } catch (error: any) {
       console.error("Login Error:", error);
+      let message = "Impossibile completare il login. Riprova.";
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        message = "Dominio non autorizzato. Aggiungi questo URL nei 'Authorized domains' della console Firebase.";
+      } else if (error.code === 'auth/popup-blocked') {
+        message = "Il popup è stato bloccato dal browser. Abilitalo per continuare.";
+      }
+
       toast({
         variant: "destructive",
         title: "Errore di accesso",
-        description: "Impossibile completare il login. Riprova.",
+        description: message,
       });
       setIsLoggingIn(false);
     }
@@ -51,8 +66,11 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-primary animate-spin" />
+          <p className="text-slate-400 font-medium">Verifica sessione...</p>
+        </div>
       </div>
     );
   }
@@ -93,7 +111,7 @@ export default function Home() {
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" opacity="0.9" />
               </svg>
             )}
-            {isLoggingIn ? "Accesso in corso..." : "Inizia con Google"}
+            {isLoggingIn ? "Apertura Google..." : "Inizia con Google"}
           </Button>
           
           <div className="grid grid-cols-2 gap-4">
@@ -120,7 +138,7 @@ export default function Home() {
       </main>
 
       <footer className="p-8 text-center text-slate-300 text-sm font-medium">
-        &copy; 2024 SmartNutrio AI. Tutti i diritti riservati.
+        &copy; 2024 SmartNutrio AI.
       </footer>
     </div>
   );

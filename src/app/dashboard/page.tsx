@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
@@ -26,6 +25,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface Ingredient {
   id: string;
@@ -74,13 +75,24 @@ export default function Dashboard() {
     setDate(new Date());
   }, []);
 
-  const ingredientsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'ingredients') : null, [db, user]);
-  const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
-  const userProfileQuery = useMemo(() => user && db ? doc(db, 'users', user.uid) : null, [db, user]);
+  const ingredientsQuery = useMemo(() => {
+    if (!user || !db) return null;
+    return collection(db, 'users', user.uid, 'ingredients');
+  }, [db, user]);
+
+  const mealsQuery = useMemo(() => {
+    if (!user || !db) return null;
+    return collection(db, 'users', user.uid, 'meals');
+  }, [db, user]);
+
+  const userProfileRef = useMemo(() => {
+    if (!user || !db) return null;
+    return doc(db, 'users', user.uid);
+  }, [db, user]);
 
   const { data: allowedIngredients = [] } = useCollection(ingredientsQuery);
   const { data: allMeals = [] } = useCollection(mealsQuery);
-  const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
+  const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
 
   useEffect(() => {
     if (mounted && !authLoading) {
@@ -172,7 +184,13 @@ export default function Dashboard() {
 
   const handleDeleteMeal = async (id: string) => {
     if (!user || !db) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+    const mealRef = doc(db, 'users', user.uid, 'meals', id);
+    deleteDoc(mealRef).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: mealRef.path,
+        operation: 'delete'
+      }));
+    });
   };
 
   const handleEditMeal = (meal: Meal) => {
@@ -183,10 +201,17 @@ export default function Dashboard() {
   const saveEditedMeal = async () => {
     if (!editingMeal || !user || !db) return;
     const mealRef = doc(db, 'users', user.uid, 'meals', editingMeal.id);
-    await updateDoc(mealRef, {
+    const data = {
       name: editingMeal.name,
       calories: editingMeal.calories,
       macros: editingMeal.macros
+    };
+    updateDoc(mealRef, data).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: mealRef.path,
+        operation: 'write',
+        requestResourceData: data
+      }));
     });
     setIsEditModalOpen(false);
     setEditingMeal(null);
@@ -196,13 +221,14 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FA]">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-        <p className="text-slate-400 font-medium">Caricamento...</p>
+        <p className="text-slate-400 font-medium">Caricamento dashboard...</p>
       </div>
     );
   }
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
+      {/* Sidebar - Desktop */}
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
@@ -406,6 +432,7 @@ export default function Dashboard() {
         </Dialog>
       </main>
 
+      {/* Right Sidebar - Desktop Insights */}
       <aside className="w-80 bg-white/50 border-l hidden 2xl:flex flex-col py-10 px-8 fixed right-0 h-full overflow-y-auto">
         <h3 className="text-xl font-bold mb-6">Insights IA</h3>
         
@@ -415,7 +442,7 @@ export default function Dashboard() {
             <span className="text-xs font-bold uppercase tracking-widest">Consiglio Smart</span>
           </div>
           <p className="text-sm font-medium text-slate-600 leading-relaxed">
-            Hai raggiunto il <span className="text-primary font-bold">{Math.round((totals.protein/150)*100)}%</span> dell'obiettivo proteico. Ottimo lavoro!
+            Hai raggiunto il <span className="text-primary font-bold">{totals.goal > 0 ? Math.round((totals.protein/150)*100) : 0}%</span> dell'obiettivo proteico. Ottimo lavoro!
           </p>
         </Card>
 
