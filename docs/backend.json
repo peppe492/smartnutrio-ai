@@ -35,6 +35,18 @@
         "image": { "type": "string" }
       },
       "required": ["name", "calories", "timestamp", "type"]
+    },
+    "ProgressEntry": {
+      "title": "Progresso Fisico",
+      "description": "Registrazione di peso e misure corporee",
+      "type": "object",
+      "properties": {
+        "weight": { "type": "number", "description": "Peso in kg" },
+        "waist": { "type": "number", "description": "Circonferenza vita in cm" },
+        "bodyFat": { "type": "number", "description": "Percentuale di grasso corporeo" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["weight", "timestamp"]
     }
   },
   "auth": {
@@ -48,6 +60,10 @@
     "/users/{userId}/meals/{mealId}": {
       "schema": "#/backend/entities/Meal",
       "description": "Registro dei pasti dell'utente"
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": "#/backend/entities/ProgressEntry",
+      "description": "Storico peso e misure dell'utente"
     }
   }
 }

@@ -8,7 +8,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, Utensils, 
-  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2, Search, X, Clock, Menu
+  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2, Search, X, Clock, Menu, TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -208,6 +208,7 @@ export default function Dashboard() {
       <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
       <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
       <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/progress" icon={<TrendingUp size={20} />} label="Progressi" active={pathname === '/progress'} />
       <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
     </nav>
   );

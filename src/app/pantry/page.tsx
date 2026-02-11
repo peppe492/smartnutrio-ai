@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { 
-  Zap, LayoutGrid, History, User, Utensils, 
+  Zap, LayoutGrid, History, User, Utensils, TrendingUp,
   Plus, Trash2, ScanBarcode, X, Loader2, Sparkles, Search, Menu, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -178,6 +178,7 @@ export default function PantryPage() {
       <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
       <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
       <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/progress" icon={<TrendingUp size={20} />} label="Progressi" active={pathname === '/progress'} />
       <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
     </nav>
   );
