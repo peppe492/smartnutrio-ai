@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ export default function Home() {
   const { user, loading } = useAuth();
   const { auth } = useFirebase();
   const { toast } = useToast();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     if (user && !loading) {
@@ -23,25 +24,50 @@ export default function Home() {
   }, [user, loading, router]);
 
   const handleGoogleLogin = async () => {
-    if (!auth) return;
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Errore di configurazione",
+        description: "Firebase non è ancora inizializzato. Riprova tra un istante.",
+      });
+      return;
+    }
+    
+    setIsLoggingIn(true);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
     try {
       await signInWithPopup(auth, provider);
+      toast({
+        title: "Accesso effettuato",
+        description: "Benvenuto su SmartNutrio AI!",
+      });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error);
+      console.error("Login Error:", error);
+      let message = "Impossibile completare il login con Google. Riprova.";
+      
+      if (error.code === 'auth/popup-blocked') {
+        message = "Il popup di accesso è stato bloccato dal browser. Abilitalo e riprova.";
+      } else if (error.code === 'auth/unauthorized-domain') {
+        message = "Questo dominio non è autorizzato nella Console Firebase (Authentication > Settings).";
+      }
+
       toast({
         variant: "destructive",
         title: "Errore di accesso",
-        description: "Impossibile completare il login con Google. Riprova.",
+        description: message,
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="w-10 h-10 text-nutrio-mint animate-spin" />
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
       </div>
     );
   }
@@ -49,11 +75,11 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
-        <div className="w-20 h-20 bg-nutrio-mint rounded-2xl mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
+        <div className="w-20 h-20 bg-primary rounded-2xl mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
           <Smartphone className="w-10 h-10" />
         </div>
         <h1 className="text-4xl font-bold tracking-tight mb-4 text-slate-900">
-          SmartNutrio <span className="text-nutrio-mint">AI</span>
+          SmartNutrio <span className="text-primary">AI</span>
         </h1>
         <p className="text-slate-500 text-lg mb-12">
           Traccia la tua nutrizione senza sforzo grazie alla visione artificiale e all'assistenza testuale della nostra IA.
@@ -62,8 +88,10 @@ export default function Home() {
         <div className="space-y-4 w-full">
           <Button 
             onClick={handleGoogleLogin}
-            className="w-full h-14 text-lg rounded-xl bg-nutrio-mint hover:bg-nutrio-mint/90 text-white font-semibold shadow-md"
+            disabled={isLoggingIn}
+            className="w-full h-14 text-lg rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold shadow-md"
           >
+            {isLoggingIn ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
             Inizia Ora con Google
           </Button>
           
@@ -72,6 +100,7 @@ export default function Home() {
               variant="outline" 
               className="h-14 rounded-xl flex items-center gap-2 border-slate-200"
               onClick={handleGoogleLogin}
+              disabled={isLoggingIn}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
