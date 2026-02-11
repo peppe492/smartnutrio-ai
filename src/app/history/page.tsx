@@ -247,15 +247,15 @@ export default function HistoryPage() {
                   head_cell: "text-slate-300 font-bold text-[10px] uppercase text-center tracking-widest",
                   row: "grid grid-cols-7 w-full mt-2",
                   cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                  day: "h-11 w-11 p-0 font-bold transition-all rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-50 mx-auto",
+                  day: "hidden", // We hide the default day completely as we provide our own cell
                   day_selected: "hidden", 
-                  day_today: "text-primary",
-                  day_outside: "text-slate-200 opacity-20",
+                  day_today: "hidden",
+                  day_outside: "hidden",
                 }}
                 components={{
-                  Day: ({ day }: any) => {
+                  Day: ({ day, modifiers, className, ...props }: any) => {
                     const date = day?.date;
-                    if (!date || !isValid(date)) return null;
+                    if (!date || !isValid(date)) return <td className="h-16 w-full" />;
 
                     const dateStr = format(date, 'yyyy-MM-dd');
                     const status = dailyStatusMap[dateStr];
@@ -263,29 +263,35 @@ export default function HistoryPage() {
                     const isOutside = !isSameMonth(date, currentMonth);
                     
                     return (
-                      <div 
-                        onClick={() => setSelectedDate(date)}
-                        className={cn(
-                          "relative flex flex-col items-center justify-center cursor-pointer group h-16 w-full",
-                          isOutside && "opacity-20"
-                        )}
+                      <td
+                        className="p-0 relative h-16 w-full"
+                        role="gridcell"
+                        {...props}
                       >
-                        <div className={cn(
-                          "h-11 w-11 flex flex-col items-center justify-center rounded-full font-bold transition-all relative",
-                          isSelected ? "bg-primary text-white scale-110 shadow-lg shadow-primary/20 z-10" : "text-slate-600 hover:bg-slate-50"
-                        )}>
-                          {format(date, 'd')}
-                          {isSelected && (
-                            <div className="w-1 h-1 rounded-full bg-white mt-0.5" />
+                        <div 
+                          onClick={() => setSelectedDate(date)}
+                          className={cn(
+                            "relative flex flex-col items-center justify-center cursor-pointer group h-full w-full",
+                            isOutside && "opacity-20"
+                          )}
+                        >
+                          <div className={cn(
+                            "h-11 w-11 flex flex-col items-center justify-center rounded-full font-bold transition-all relative",
+                            isSelected ? "bg-primary text-white scale-110 shadow-lg shadow-primary/20 z-10" : "text-slate-600 hover:bg-slate-50"
+                          )}>
+                            {format(date, 'd')}
+                            {isSelected && (
+                              <div className="w-1 h-1 rounded-full bg-white mt-0.5" />
+                            )}
+                          </div>
+                          {!isSelected && status && (
+                            <div className={cn(
+                              "absolute bottom-1 w-1 h-1 rounded-full",
+                              status === 'met' ? "bg-emerald-400" : "bg-orange-400"
+                            )} />
                           )}
                         </div>
-                        {!isSelected && status && (
-                          <div className={cn(
-                            "absolute bottom-1 w-1 h-1 rounded-full",
-                            status === 'met' ? "bg-emerald-400" : "bg-orange-400"
-                          )} />
-                        )}
-                      </div>
+                      </td>
                     );
                   }
                 }}
