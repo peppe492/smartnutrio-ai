@@ -8,7 +8,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, Utensils, 
-  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2, Search, X, Clock, Menu, TrendingUp
+  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2, Search, X, Clock, Menu, TrendingUp,
+  Coffee, Sun, Moon, Apple
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -106,7 +107,6 @@ export default function Dashboard() {
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   }, [meals]);
 
-  // Calcolo progresso dieta
   const dietProgress = useMemo(() => {
     if (!userProfile?.dietStartDate || !userProfile?.dietEndDate) return null;
     const start = new Date(userProfile.dietStartDate);
@@ -125,7 +125,6 @@ export default function Dashboard() {
 
   const caloriesLeft = Math.max(0, dailyGoal - totals.calories);
   
-  // Dati per il grafico principale (se c'è una dieta, mostriamo i giorni)
   const mainChartData = useMemo(() => {
     if (dietProgress) {
       return [
@@ -265,7 +264,6 @@ export default function Dashboard() {
       </aside>
 
       <main className="flex-1 lg:ml-64 w-full">
-        {/* Mobile Header */}
         <header className="lg:hidden h-16 bg-white border-b px-4 flex items-center justify-between sticky top-0 z-50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
@@ -565,14 +563,38 @@ function MacroRow({ icon, label, current, goal, color, bgColor }: any) {
 }
 
 function MealCard({ meal }: any) {
+  const getMealIcon = () => {
+    switch (meal.type?.toLowerCase()) {
+      case 'colazione': return <Coffee className="text-orange-600" size={24} />;
+      case 'pranzo': return <Sun className="text-yellow-600" size={24} />;
+      case 'cena': return <Moon className="text-indigo-600" size={24} />;
+      case 'spuntino': return <Apple className="text-red-600" size={24} />;
+      default: return <Utensils className="text-slate-500" size={24} />;
+    }
+  };
+
+  const getMealBg = () => {
+    switch (meal.type?.toLowerCase()) {
+      case 'colazione': return 'bg-orange-50';
+      case 'pranzo': return 'bg-yellow-50';
+      case 'cena': return 'bg-indigo-50';
+      case 'spuntino': return 'bg-red-50';
+      default: return 'bg-slate-50';
+    }
+  };
+
   return (
     <Card className="border-none rounded-[28px] bg-white nutrio-shadow overflow-hidden p-5 flex items-center gap-5">
-      <div className="relative w-20 h-20 shrink-0">
-        <img 
-          src={meal.image || 'https://picsum.photos/seed/food/100/100'} 
-          alt={meal.name} 
-          className="w-full h-full object-cover rounded-2xl" 
-        />
+      <div className={cn("w-20 h-20 shrink-0 rounded-2xl flex items-center justify-center relative", getMealBg())}>
+        {meal.image ? (
+          <img 
+            src={meal.image} 
+            alt={meal.name} 
+            className="w-full h-full object-cover rounded-2xl" 
+          />
+        ) : (
+          getMealIcon()
+        )}
         <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-white/80 backdrop-blur-md rounded-lg text-[8px] font-black uppercase text-primary border border-primary/20">
           {meal.type}
         </div>

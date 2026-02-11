@@ -5,7 +5,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
-  ChevronLeft, ChevronRight, Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets
+  ChevronLeft, ChevronRight, Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets,
+  Coffee, Sun, Moon, Apple
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -104,6 +105,26 @@ export default function HistoryPage() {
     </nav>
   );
 
+  const getMealIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'colazione': return <Coffee className="text-orange-600" size={24} />;
+      case 'pranzo': return <Sun className="text-yellow-600" size={24} />;
+      case 'cena': return <Moon className="text-indigo-600" size={24} />;
+      case 'spuntino': return <Apple className="text-red-600" size={24} />;
+      default: return <Utensils className="text-slate-500" size={24} />;
+    }
+  };
+
+  const getMealBg = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'colazione': return 'bg-orange-50';
+      case 'pranzo': return 'bg-yellow-50';
+      case 'cena': return 'bg-indigo-50';
+      case 'spuntino': return 'bg-red-50';
+      default: return 'bg-slate-50';
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
@@ -117,7 +138,6 @@ export default function HistoryPage() {
       </aside>
 
       <main className="flex-1 lg:ml-64 w-full">
-        {/* Mobile Header */}
         <header className="lg:hidden h-16 bg-white border-b px-4 flex items-center justify-between sticky top-0 z-50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
@@ -193,8 +213,12 @@ export default function HistoryPage() {
                   <div className="space-y-4">
                     {mealsForSelectedDay.map((meal: any) => (
                       <div key={meal.id} className="group flex items-center p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent">
-                        <div className="w-14 h-14 rounded-xl overflow-hidden mr-4 shadow-sm bg-slate-100 flex-shrink-0">
-                          <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} alt={meal.name} className="w-full h-full object-cover" />
+                        <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center mr-4 shadow-sm shrink-0", getMealBg(meal.type))}>
+                          {meal.image ? (
+                            <img src={meal.image} alt={meal.name} className="w-full h-full object-cover rounded-xl" />
+                          ) : (
+                            getMealIcon(meal.type)
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h5 className="font-bold text-slate-900 truncate text-sm">{meal.name}</h5>
