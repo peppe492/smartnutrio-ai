@@ -5,18 +5,23 @@ import { useAuth, useFirestore, useDoc } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
   User, Mail, Target, Award, LogOut, ChevronRight, 
-  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2, Menu
+  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2, Menu, Edit2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { signOut } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
+import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
 
 export default function ProfilePage() {
   const pathname = usePathname();
@@ -25,6 +30,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -37,11 +44,64 @@ export default function ProfilePage() {
 
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
 
+  const [editData, setEditData] = useState({
+    weight: 0,
+    height: 0,
+    age: 0,
+    gender: 'male' as 'male' | 'female',
+    activityLevel: 1.55
+  });
+
+  useEffect(() => {
+    if (userProfile) {
+      setEditData({
+        weight: userProfile.weight || 70,
+        height: userProfile.height || 175,
+        age: userProfile.age || 25,
+        gender: userProfile.gender || 'male',
+        activityLevel: userProfile.activityLevel || 1.55
+      });
+    }
+  }, [userProfile]);
+
   useEffect(() => {
     if (mounted && !authLoading && !user) {
       router.replace('/');
     }
   }, [mounted, authLoading, user, router]);
+
+  const handleUpdateParams = async () => {
+    if (!user || !db || !userProfileRef) return;
+    setIsUpdating(true);
+    try {
+      const newTdee = calculateTDEE({
+        weight: editData.weight,
+        height: editData.height,
+        age: editData.age,
+        gender: editData.gender,
+        activityLevel: editData.activityLevel as any
+      });
+
+      await updateDoc(userProfileRef, {
+        ...editData,
+        tdeeGoal: newTdee
+      });
+
+      toast({
+        title: "Parametri aggiornati!",
+        description: `Il tuo nuovo obiettivo è ${newTdee} kcal al giorno.`,
+      });
+      setIsEditModalOpen(false);
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Impossibile aggiornare i parametri.",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -88,7 +148,6 @@ export default function ProfilePage() {
       </aside>
 
       <main className="flex-1 lg:ml-64 w-full">
-        {/* Mobile Header */}
         <header className="lg:hidden h-16 bg-white border-b px-4 flex items-center justify-between sticky top-0 z-50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
@@ -152,9 +211,66 @@ export default function ProfilePage() {
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Obiettivo Giornaliero</p>
                     <p className="text-2xl font-black text-slate-900">{userProfile?.tdeeGoal || '2000'} <span className="text-sm text-slate-400">kcal</span></p>
                   </div>
-                  <Button variant="outline" size="sm" asChild className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 w-full sm:w-auto">
-                    <Link href="/onboarding">Aggiorna Parametri</Link>
-                  </Button>
+                  <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 w-full sm:w-auto gap-2">
+                        <Edit2 size={14} /> Aggiorna Parametri
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-[32px] p-8 border-none bg-white">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-slate-900">Aggiorna Parametri</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Peso (kg)</Label>
+                            <Input type="number" value={editData.weight} onChange={e => setEditData({ ...editData, weight: Number(e.target.value) })} className="h-12 rounded-xl" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Altezza (cm)</Label>
+                            <Input type="number" value={editData.height} onChange={e => setEditData({ ...editData, height: Number(e.target.value) })} className="h-12 rounded-xl" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Età</Label>
+                            <Input type="number" value={editData.age} onChange={e => setEditData({ ...editData, age: Number(e.target.value) })} className="h-12 rounded-xl" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Sesso</Label>
+                            <Select value={editData.gender} onValueChange={(v: any) => setEditData({ ...editData, gender: v })}>
+                              <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="male">Uomo</SelectItem>
+                                <SelectItem value="female">Donna</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Attività</Label>
+                          <Select value={editData.activityLevel.toString()} onValueChange={(v) => setEditData({ ...editData, activityLevel: Number(v) })}>
+                            <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {ACTIVITY_LEVELS.map(l => (
+                                <SelectItem key={l.value} value={l.value.toString()}>{l.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button 
+                          onClick={handleUpdateParams} 
+                          disabled={isUpdating}
+                          className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20"
+                        >
+                          {isUpdating ? <Loader2 className="animate-spin mr-2" /> : "Salva e Ricalcola"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3">
@@ -172,7 +288,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="pt-4 border-t border-slate-50">
                   <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                    Questi valori sono calcolati in base ai parametri fisici inseriti durante il setup iniziale.
+                    Questi valori sono ricalcolati istantaneamente in base ai tuoi nuovi parametri fisici.
                   </p>
                 </div>
               </div>

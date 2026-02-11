@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +27,8 @@ interface Ingredient {
 
 export default function Onboarding() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditing = searchParams.get('edit') === 'true';
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const db = useFirestore();
@@ -67,6 +70,12 @@ export default function Onboarding() {
   useEffect(() => {
     async function checkProfile() {
       if (mounted && user && db) {
+        // Se siamo in modalità edit, non reindirizziamo alla dashboard
+        if (isEditing) {
+          setCheckingProfile(false);
+          return;
+        }
+
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
         if (docSnap.exists() && !isFinishing) {
@@ -79,7 +88,7 @@ export default function Onboarding() {
       }
     }
     checkProfile();
-  }, [user, authLoading, db, mounted, router, isFinishing]);
+  }, [user, authLoading, db, mounted, router, isFinishing, isEditing]);
 
   useEffect(() => {
     if (isScanning && typeof window !== 'undefined') {
