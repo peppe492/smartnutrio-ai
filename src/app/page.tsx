@@ -18,6 +18,14 @@ export default function Home() {
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
 
   useEffect(() => {
+    // Pulisce la cache locale all'avvio per evitare conflitti di sessione
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear();
+      localStorage.removeItem('onboarding_draft');
+    }
+  }, []);
+
+  useEffect(() => {
     if (!loading && user) {
       router.replace('/dashboard');
     }
@@ -44,7 +52,7 @@ export default function Home() {
       if (result.user) {
         toast({
           title: "Accesso effettuato",
-          description: "Benvenuto su SmartNutrio AI!",
+          description: `Benvenuto, ${result.user.displayName}!`,
         });
         router.push('/dashboard');
       }
@@ -74,7 +82,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="text-slate-400 font-medium">Verifica sessione...</p>
+          <p className="text-slate-400 font-medium">Inizializzazione sessione...</p>
         </div>
       </div>
     );
@@ -103,9 +111,9 @@ export default function Home() {
         {unauthorizedDomain && (
           <Alert variant="destructive" className="mb-8 text-left max-w-md">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Dominio non autorizzato</AlertTitle>
+            <AlertTitle>Configurazione Richiesta</AlertTitle>
             <AlertDescription>
-              Devi aggiungere <strong>{unauthorizedDomain}</strong> ai "Authorized domains" nelle impostazioni di Authentication della Console Firebase.
+              Devi aggiungere <strong>{unauthorizedDomain}</strong> ai &quot;Authorized domains&quot; nelle impostazioni di Authentication della Console Firebase (Settings &gt; Authorized domains).
             </AlertDescription>
           </Alert>
         )}
@@ -126,34 +134,13 @@ export default function Home() {
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" opacity="0.9" />
               </svg>
             )}
-            {isLoggingIn ? "Apertura Google..." : "Inizia con Google"}
+            {isLoggingIn ? "Connessione in corso..." : "Continua con Google"}
           </Button>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <Button 
-              variant="outline" 
-              className="h-14 rounded-[2rem] border-slate-200 font-bold hover:bg-white"
-              disabled
-            >
-              <Apple className="w-5 h-5 mr-2" /> Apple
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-14 rounded-[2rem] border-slate-200 font-bold hover:bg-white"
-              disabled
-            >
-              <Smartphone className="w-5 h-5 mr-2" /> Phone
-            </Button>
-          </div>
-          
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-4">
-            Proseguendo accetti i nostri Termini di Servizio
-          </p>
         </div>
       </main>
 
       <footer className="p-8 text-center text-slate-300 text-sm font-medium">
-        &copy; 2024 SmartNutrio AI.
+        &copy; 2024 SmartNutrio AI. Powered by Google Gemini.
       </footer>
     </div>
   );
