@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -7,34 +8,43 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
   History, LayoutGrid, Utensils, 
-  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2
+  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2, Search, X, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, addDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
   const db = useFirestore();
+  const { toast } = useToast();
   
   const [date, setDate] = useState<Date | null>(null);
-  const [mealType, setMealType] = useState('pranzo');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  
+  // Stati per la creazione manuale del pasto
+  const [manualSearch, setManualSearch] = useState('');
+  const [selectedIngredients, setSelectedIngredients] = useState<any[]>([]);
+  const [mealType, setMealType] = useState('pranzo');
+  const [mealDate, setMealDate] = useState<Date>(new Date());
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -46,12 +56,18 @@ export default function Dashboard() {
     return collection(db, 'users', user.uid, 'meals');
   }, [db, user]);
 
+  const ingredientsQuery = useMemo(() => {
+    if (!user || !db) return null;
+    return collection(db, 'users', user.uid, 'ingredients');
+  }, [db, user]);
+
   const userProfileRef = useMemo(() => {
     if (!user || !db) return null;
     return doc(db, 'users', user.uid);
   }, [db, user]);
 
   const { data: allMeals = [] } = useCollection(mealsQuery);
+  const { data: allIngredients = [] } = useCollection(ingredientsQuery as any);
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
 
   useEffect(() => {
@@ -106,12 +122,75 @@ export default function Dashboard() {
         sessionStorage.setItem('last_meal_analysis', JSON.stringify(analysisResult));
         router.push('/analysis');
       } catch (error) {
-        console.error(error);
+        toast({ variant: "destructive", title: "Errore IA", description: "Impossibile analizzare l'immagine." });
       } finally {
         setIsAnalyzing(false);
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const filteredPantry = useMemo(() => {
+    return allIngredients.filter((ing: any) => 
+      ing.name.toLowerCase().includes(manualSearch.toLowerCase())
+    );
+  }, [allIngredients, manualSearch]);
+
+  const addIngredientToSelection = (ing: any) => {
+    if (selectedIngredients.find(i => i.id === ing.id)) return;
+    setSelectedIngredients([...selectedIngredients, { ...ing, grams: 100 }]);
+  };
+
+  const removeIngredientFromSelection = (id: string) => {
+    setSelectedIngredients(selectedIngredients.filter(i => i.id !== id));
+  };
+
+  const updateGrams = (id: string, grams: number) => {
+    setSelectedIngredients(selectedIngredients.map(i => i.id === id ? { ...i, grams } : i));
+  };
+
+  const manualMealTotals = useMemo(() => {
+    return selectedIngredients.reduce((acc, ing) => {
+      const ratio = ing.grams / 100;
+      return {
+        calories: acc.calories + (ing.calories * ratio),
+        protein: acc.protein + (ing.protein * ratio),
+        carbs: acc.carbs + (ing.carbs * ratio),
+        fat: acc.fat + (ing.fat * ratio),
+      };
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  }, [selectedIngredients]);
+
+  const saveManualMeal = async () => {
+    if (!user || !db || selectedIngredients.length === 0) return;
+    setIsSaving(true);
+    try {
+      const mealName = selectedIngredients.length === 1 
+        ? selectedIngredients[0].name 
+        : `Pasto composto (${selectedIngredients.length} ingredienti)`;
+
+      await addDoc(collection(db, 'users', user.uid, 'meals'), {
+        name: mealName,
+        description: selectedIngredients.map(i => `${i.name} (${i.grams}g)`).join(', '),
+        calories: Math.round(manualMealTotals.calories),
+        macros: {
+          protein: Math.round(manualMealTotals.protein),
+          carbs: Math.round(manualMealTotals.carbs),
+          fat: Math.round(manualMealTotals.fat),
+        },
+        timestamp: mealDate.toISOString(),
+        type: mealType,
+        ingredients: selectedIngredients.map(i => ({ id: i.id, grams: i.grams }))
+      });
+
+      toast({ title: "Pasto registrato!", description: "Il pasto è stato aggiunto al tuo diario." });
+      setIsAddModalOpen(false);
+      setSelectedIngredients([]);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Errore", description: "Impossibile salvare il pasto." });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!mounted || authLoading || (user && profileLoading)) {
@@ -214,27 +293,141 @@ export default function Dashboard() {
                   <Plus size={20} /> AGGIUNGI
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl rounded-[32px] p-0 overflow-hidden border-none bg-white">
+              <DialogContent className="sm:max-w-4xl rounded-[32px] p-0 overflow-hidden border-none bg-white">
                 <Tabs defaultValue="camera" className="w-full">
                   <TabsList className="w-full grid grid-cols-2 h-14 bg-slate-50 border-b rounded-none">
-                    <TabsTrigger value="camera" className="data-[state=active]:bg-white rounded-none"><Camera size={18} className="mr-2" /> Foto IA</TabsTrigger>
-                    <TabsTrigger value="manual" className="data-[state=active]:bg-white rounded-none"><Utensils size={18} className="mr-2" /> Dispensa</TabsTrigger>
+                    <TabsTrigger value="camera" className="data-[state=active]:bg-white rounded-none h-full"><Camera size={18} className="mr-2" /> Foto IA</TabsTrigger>
+                    <TabsTrigger value="manual" className="data-[state=active]:bg-white rounded-none h-full"><Utensils size={18} className="mr-2" /> Dispensa Smart</TabsTrigger>
                   </TabsList>
-                  <div className="p-8">
+                  
+                  <div className="p-8 max-h-[80vh] overflow-y-auto">
                     <TabsContent value="camera" className="m-0 text-center">
                       <Camera className="w-12 h-12 text-primary mx-auto mb-4" />
-                      <Label htmlFor="image-upload" className="block">
-                        <div className="w-full h-14 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer hover:bg-primary/90 transition-all">
-                          {isAnalyzing ? <Loader2 className="animate-spin mr-2" /> : "Scegli Foto"}
+                      <h3 className="text-xl font-bold mb-2">Analisi Istantanea</h3>
+                      <p className="text-slate-400 mb-8 max-w-sm mx-auto">Scatta una foto del tuo piatto e la nostra IA calcolerà calorie e macro per te.</p>
+                      <Label htmlFor="image-upload" className="block max-w-sm mx-auto">
+                        <div className="w-full h-16 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+                          {isAnalyzing ? <Loader2 className="animate-spin mr-2" /> : "SCATTA O SCEGLI FOTO"}
                         </div>
                         <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isAnalyzing} />
                       </Label>
                     </TabsContent>
-                    <TabsContent value="manual" className="m-0 text-center py-10">
-                       <p className="text-slate-400 font-medium mb-4">Scegli dalla tua dispensa smart.</p>
-                       <Button asChild variant="outline" className="rounded-2xl border-primary/20 text-primary">
-                         <Link href="/pantry">Vai alla Dispensa</Link>
-                       </Button>
+
+                    <TabsContent value="manual" className="m-0 space-y-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Sezione Sinistra: Selezione Ingredienti */}
+                        <div className="space-y-6">
+                          <div className="relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                            <Input 
+                              placeholder="Cerca in dispensa..." 
+                              className="pl-11 h-12 rounded-xl bg-slate-50 border-none"
+                              value={manualSearch}
+                              onChange={(e) => setManualSearch(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                            {filteredPantry.map((ing: any) => (
+                              <button 
+                                key={ing.id} 
+                                onClick={() => addIngredientToSelection(ing)}
+                                className="w-full flex items-center justify-between p-4 rounded-2xl border hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                              >
+                                <div className="text-left">
+                                  <p className="text-sm font-bold text-slate-900">{ing.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase">{ing.calories} kcal / 100g</p>
+                                </div>
+                                <Plus size={18} className="text-slate-300 group-hover:text-primary" />
+                              </button>
+                            ))}
+                            {filteredPantry.length === 0 && (
+                              <div className="text-center py-10">
+                                <p className="text-xs text-slate-400 font-medium italic">Nessun ingrediente trovato.</p>
+                                <Button asChild variant="link" className="text-primary text-xs h-auto p-0 mt-1">
+                                  <Link href="/pantry">Aggiungi nuovo alimento</Link>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sezione Destra: Composizione Pasto */}
+                        <div className="bg-slate-50 rounded-[2rem] p-6 space-y-6">
+                          <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                            <Sparkles size={16} className="text-primary" /> Il tuo Piatto
+                          </h4>
+                          
+                          <div className="space-y-3">
+                            {selectedIngredients.map((ing) => (
+                              <div key={ing.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-slate-900 truncate">{ing.name}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Input 
+                                      type="number" 
+                                      className="h-8 w-16 text-xs font-bold p-1 text-center"
+                                      value={ing.grams}
+                                      onChange={(e) => updateGrams(ing.id, Number(e.target.value))}
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-400">grammi</span>
+                                  </div>
+                                </div>
+                                <button onClick={() => removeIngredientFromSelection(ing.id)} className="text-slate-300 hover:text-red-500">
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            ))}
+                            {selectedIngredients.length === 0 && (
+                              <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Piatto Vuoto</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {selectedIngredients.length > 0 && (
+                            <div className="pt-6 border-t space-y-6">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Tipo Pasto</Label>
+                                  <Select value={mealType} onValueChange={setMealType}>
+                                    <SelectTrigger className="h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="colazione">Colazione</SelectItem>
+                                      <SelectItem value="pranzo">Pranzo</SelectItem>
+                                      <SelectItem value="cena">Cena</SelectItem>
+                                      <SelectItem value="spuntino">Spuntino</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Data e Ora</Label>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" className="w-full h-10 rounded-xl text-xs justify-start px-3 font-normal">
+                                        <Clock size={14} className="mr-2" /> {format(mealDate, 'HH:mm - dd/MM')}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="end">
+                                      <Calendar mode="single" selected={mealDate} onSelect={(d) => d && setMealDate(d)} />
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-between items-end">
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calorie Totali</p>
+                                  <p className="text-3xl font-black text-slate-900">{Math.round(manualMealTotals.calories)} <span className="text-sm font-bold text-slate-400">kcal</span></p>
+                                </div>
+                                <Button onClick={saveManualMeal} disabled={isSaving} className="rounded-xl h-12 px-6 bg-slate-900 text-white font-bold hover:bg-slate-800">
+                                  {isSaving ? <Loader2 className="animate-spin mr-2" /> : "CONFERMA"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </TabsContent>
                   </div>
                 </Tabs>
@@ -292,11 +485,23 @@ function MealCard({ meal }: any) {
   return (
     <Card className="border-none rounded-[28px] bg-white nutrio-shadow overflow-hidden p-5 flex items-center gap-5">
       <div className="relative w-20 h-20 shrink-0">
-        <img src={meal.image || 'https://picsum.photos/seed/food/100/100'} alt={meal.name} className="w-full h-full object-cover rounded-2xl" />
+        <img 
+          src={meal.image || 'https://picsum.photos/seed/food/100/100'} 
+          alt={meal.name} 
+          className="w-full h-full object-cover rounded-2xl" 
+        />
+        <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-white/80 backdrop-blur-md rounded-lg text-[8px] font-black uppercase text-primary border border-primary/20">
+          {meal.type}
+        </div>
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-slate-900 truncate">{meal.name}</h3>
         <p className="text-[11px] text-slate-400 truncate">{meal.description}</p>
+        <div className="flex gap-2 mt-1">
+          <div className="text-[9px] font-bold text-slate-400">P: {meal.macros?.protein}g</div>
+          <div className="text-[9px] font-bold text-slate-400">C: {meal.macros?.carbs}g</div>
+          <div className="text-[9px] font-bold text-slate-400">G: {meal.macros?.fat}g</div>
+        </div>
       </div>
       <div className="text-right">
         <div className="font-black text-xl text-slate-900">{meal.calories}</div>
@@ -305,3 +510,4 @@ function MealCard({ meal }: any) {
     </Card>
   );
 }
+
