@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isValid, parseISO, addMonths, subMonths } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
   Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets,
@@ -28,6 +28,7 @@ export default function HistoryPage() {
   const { user } = useAuth();
   const db = useFirestore();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMeal, setEditingMeal] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
@@ -43,28 +44,35 @@ export default function HistoryPage() {
   const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
   const { data: allMeals = [] } = useCollection(mealsQuery);
 
-  // Calcola lo stato per ogni giorno per i puntini colorati
   const dailyStatusMap = useMemo(() => {
     const map: Record<string, 'met' | 'exceeded' | 'none'> = {};
     
+    const mealsByDate: Record<string, number> = {};
+    
     allMeals.forEach((meal: any) => {
-      const dateStr = format(new Date(meal.timestamp), 'yyyy-MM-dd');
-      if (!map[dateStr]) {
-        const dayMeals = allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === dateStr);
-        const totalCals = dayMeals.reduce((acc: number, m: any) => acc + (m.calories || 0), 0);
-        map[dateStr] = totalCals > dailyGoal ? 'exceeded' : 'met';
-      }
+      if (!meal.timestamp) return;
+      const d = typeof meal.timestamp === 'string' ? parseISO(meal.timestamp) : new Date(meal.timestamp);
+      if (!isValid(d)) return;
+      
+      const dateStr = format(d, 'yyyy-MM-dd');
+      mealsByDate[dateStr] = (mealsByDate[dateStr] || 0) + (meal.calories || 0);
+    });
+
+    Object.keys(mealsByDate).forEach(dateStr => {
+      map[dateStr] = mealsByDate[dateStr] > dailyGoal ? 'exceeded' : 'met';
     });
     
     return map;
   }, [allMeals, dailyGoal]);
 
   const mealsForSelectedDay = useMemo(() => {
-    if (!selectedDate) return [];
+    if (!selectedDate || !isValid(selectedDate)) return [];
     const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
     return allMeals.filter((m: any) => {
       try {
-        return format(new Date(m.timestamp), 'yyyy-MM-dd') === targetDateStr;
+        if (!m.timestamp) return false;
+        const d = typeof m.timestamp === 'string' ? parseISO(m.timestamp) : new Date(m.timestamp);
+        return isValid(d) && format(d, 'yyyy-MM-dd') === targetDateStr;
       } catch (e) {
         return false;
       }
@@ -120,6 +128,9 @@ export default function HistoryPage() {
         errorEmitter.emit('permission-error', permissionError);
       });
   };
+
+  const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
+  const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
   if (!mounted || !user) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -211,12 +222,12 @@ export default function HistoryPage() {
             <Card className="xl:col-span-1 bg-white p-8 rounded-[40px] border-none shadow-xl flex flex-col items-center">
               <div className="w-full flex items-center justify-between mb-8">
                 <div className="flex items-center gap-1.5 cursor-pointer">
-                  <span className="text-lg font-bold text-slate-900">{selectedDate ? format(selectedDate, 'MMMM yyyy', { locale: it }) : 'Seleziona'}</span>
+                  <span className="text-lg font-bold text-slate-900">{format(currentMonth, 'MMMM yyyy', { locale: it })}</span>
                   <ChevronDown size={16} className="text-slate-400" />
                 </div>
                 <div className="flex gap-4">
-                   <ChevronLeft size={20} className="text-slate-400 cursor-pointer hover:text-primary transition-colors" />
-                   <ChevronRight size={20} className="text-slate-400 cursor-pointer hover:text-primary transition-colors" />
+                   <ChevronLeft size={20} className="text-slate-400 cursor-pointer hover:text-primary transition-colors" onClick={handlePrevMonth} />
+                   <ChevronRight size={20} className="text-slate-400 cursor-pointer hover:text-primary transition-colors" onClick={handleNextMonth} />
                 </div>
               </div>
 
@@ -224,12 +235,14 @@ export default function HistoryPage() {
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
+                month={currentMonth}
+                onMonthChange={setCurrentMonth}
                 className="rounded-md border-none p-0 w-full"
                 locale={it}
                 classNames={{
                   months: "w-full",
                   month: "w-full space-y-6",
-                  caption: "hidden", // Nascondiamo il caption di default perché lo abbiamo fatto custom
+                  caption: "hidden",
                   table: "w-full border-collapse",
                   head_row: "flex justify-between mb-4",
                   head_cell: "text-slate-300 font-bold text-[10px] uppercase w-10 text-center tracking-widest",
@@ -243,17 +256,22 @@ export default function HistoryPage() {
                   day_outside: "text-slate-200 opacity-50",
                 }}
                 components={{
-                  Day: ({ date, displayMonth }: any) => {
+                  Day: (props: any) => {
+                    const { day, modifiers } = props;
+                    const date = day.date;
+                    if (!date || !isValid(date)) return null;
+
                     const dateStr = format(date, 'yyyy-MM-dd');
                     const status = dailyStatusMap[dateStr];
                     const isSelected = selectedDate && isSameDay(date, selectedDate);
+                    const isOutside = !isSameDay(date, currentMonth) && format(date, 'MM') !== format(currentMonth, 'MM');
                     
                     return (
                       <div 
                         onClick={() => setSelectedDate(date)}
                         className={cn(
                           "relative flex flex-col items-center justify-center cursor-pointer group h-14 w-10",
-                          !isSameDay(date, displayMonth) && "opacity-20"
+                          isOutside && "opacity-20"
                         )}
                       >
                         <div className={cn(
@@ -277,14 +295,14 @@ export default function HistoryPage() {
                 }}
               />
 
-              <div className="w-full mt-10 pt-8 border-t border-slate-50 flex justify-between">
+              <div className="w-full mt-10 pt-8 border-t border-slate-50 flex flex-wrap justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Obiettivo OK</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-orange-400" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Soglia Superata</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Superato</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-slate-200" />
@@ -304,7 +322,7 @@ export default function HistoryPage() {
                 <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                   <div className="text-center sm:text-left">
                     <h3 className="text-xl font-bold text-slate-900">
-                      {selectedDate ? format(selectedDate, 'EEEE, d MMMM', { locale: it }) : 'Seleziona una data'}
+                      {selectedDate && isValid(selectedDate) ? format(selectedDate, 'EEEE, d MMMM', { locale: it }) : 'Seleziona una data'}
                     </h3>
                     <p className="text-xs text-slate-400 font-medium mt-1">Riepilogo nutrizionale del giorno</p>
                   </div>
