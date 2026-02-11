@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useAuth, useFirestore, useDoc } from '@/firebase';
+import { useAuth, useFirestore, useDoc, useAuthInstance } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
   User, Mail, Target, Award, LogOut, ChevronRight, 
@@ -25,7 +25,8 @@ import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
 
 export default function ProfilePage() {
   const pathname = usePathname();
-  const { user, loading: authLoading, auth } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const auth = useAuthInstance();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -108,6 +109,7 @@ export default function ProfilePage() {
     try {
       await signOut(auth);
       sessionStorage.clear();
+      localStorage.clear();
       router.push('/');
       toast({ title: "Sessione chiusa", description: "A presto!" });
     } catch (error) {
