@@ -1,11 +1,10 @@
-
-"use client";
+'use client';
 
 import { useAuth, useFirestore, useDoc } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { 
   User, Mail, Target, Award, LogOut, ChevronRight, 
-  ArrowLeft, Settings, Shield, Bell, Zap, Camera
+  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,8 +13,10 @@ import { signOut } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
+  const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
   const { auth } = useAuth();
   const db = useFirestore();
@@ -38,7 +39,7 @@ export default function ProfilePage() {
 
   if (authLoading || profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background-light">
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]">
         <Zap className="w-10 h-10 text-primary animate-spin" />
       </div>
     );
@@ -50,25 +51,23 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F8F7] font-display text-slate-800">
-      {/* Top Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b px-6 h-20 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-primary transition-colors">
-          <ArrowLeft size={18} /> Dashboard
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-            <Zap size={16} className="fill-current" />
+    <div className="flex min-h-screen bg-[#F7F8FA]">
+      <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">
+            <Zap className="w-6 h-6 fill-current" />
           </div>
-          <span className="font-extrabold text-xl tracking-tight">SmartNutrio <span className="text-primary">AI</span></span>
+          <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio<span className="text-primary">.</span></span>
         </div>
-        <Button variant="ghost" size="icon" className="rounded-full text-slate-400">
-          <Settings size={20} />
-        </Button>
-      </nav>
+        <nav className="flex-1 space-y-2">
+          <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
+          <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
+          <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+          <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
+        </nav>
+      </aside>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
-        {/* Profile Hero */}
+      <main className="flex-1 lg:ml-64 p-6 lg:p-10">
         <div className="flex flex-col items-center text-center mb-12">
           <div className="relative group mb-6">
             <Avatar className="w-32 h-32 border-4 border-white shadow-2xl">
@@ -82,7 +81,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <h1 className="text-3xl font-black text-slate-900 mb-1">{user.displayName}</h1>
-          <p className="text-slate-500 font-medium flex items-center gap-2">
+          <p className="text-slate-500 font-medium flex items-center justify-center gap-2">
             <Mail size={16} /> {user.email}
           </p>
           <div className="mt-6 inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full text-xs font-bold text-primary uppercase tracking-widest">
@@ -90,14 +89,13 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Stats & Goals */}
-          <Card className="p-8 border-none shadow-xl rounded-[2.5rem] bg-white">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <Card className="p-8 border-none shadow-xl rounded-[40px] bg-white">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900">
               <Target className="text-primary" size={20} /> Il Tuo Piano
             </h3>
             <div className="space-y-6">
-              <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
+              <div className="flex justify-between items-center p-6 bg-slate-50 rounded-[28px]">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Obiettivo Giornaliero</p>
                   <p className="text-2xl font-black text-slate-900">{userProfile?.tdeeGoal || '2000'} <span className="text-sm text-slate-400">kcal</span></p>
@@ -111,7 +109,7 @@ export default function ProfilePage() {
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Proteine</p>
                   <p className="text-sm font-bold text-slate-900">150g</p>
                 </div>
-                <div className="text-center p-3 border-x">
+                <div className="text-center p-3 border-x border-slate-50">
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Carboidrati</p>
                   <p className="text-sm font-bold text-slate-900">300g</p>
                 </div>
@@ -123,17 +121,16 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          {/* Settings Menu */}
           <div className="space-y-4">
             <ProfileMenuItem icon={<User size={18} />} label="Informazioni Personali" />
             <ProfileMenuItem icon={<Bell size={18} />} label="Notifiche" />
             <ProfileMenuItem icon={<Shield size={18} />} label="Privacy e Sicurezza" />
             <button 
               onClick={handleLogout}
-              className="w-full flex items-center justify-between p-6 bg-white rounded-[2rem] shadow-sm hover:bg-red-50 transition-all group border border-transparent hover:border-red-100"
+              className="w-full flex items-center justify-between p-6 bg-white rounded-[32px] shadow-sm hover:bg-red-50 transition-all group border border-transparent hover:border-red-100"
             >
               <div className="flex items-center gap-4 text-red-500 font-bold">
-                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center transition-colors group-hover:bg-red-200">
                   <LogOut size={20} />
                 </div>
                 Esci dall'account
@@ -147,9 +144,25 @@ export default function ProfilePage() {
   );
 }
 
+function SidebarLink({ href, icon, label, active }: { href: string, icon: React.ReactNode, label: string, active?: boolean }) {
+  return (
+    <Link 
+      href={href} 
+      className={cn(
+        "w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm",
+        active 
+          ? "bg-primary/10 text-primary border-l-4 border-primary shadow-sm" 
+          : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+      )}
+    >
+      {icon} {label}
+    </Link>
+  );
+}
+
 function ProfileMenuItem({ icon, label }: { icon: React.ReactNode, label: string }) {
   return (
-    <button className="w-full flex items-center justify-between p-6 bg-white rounded-[2rem] shadow-sm hover:shadow-md transition-all group">
+    <button className="w-full flex items-center justify-between p-6 bg-white rounded-[32px] shadow-sm hover:shadow-md transition-all group">
       <div className="flex items-center gap-4 font-bold text-slate-700">
         <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
           {icon}

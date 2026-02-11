@@ -19,28 +19,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 
-interface Meal {
-  id: string;
-  name: string;
-  description: string;
-  calories: number;
-  macros: {
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
-  timestamp: string;
-  type: string;
-  image?: string;
-}
-
 export default function Dashboard() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
   const db = useFirestore();
   
@@ -73,7 +59,6 @@ export default function Dashboard() {
       if (!user) {
         router.replace('/');
       } else if (!profileLoading && userProfile === null) {
-        // Solo se il caricamento è finito e il profilo NON esiste, andiamo all'onboarding
         router.push('/onboarding');
       }
     }
@@ -148,15 +133,10 @@ export default function Dashboard() {
           <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio<span className="text-primary">.</span></span>
         </div>
         <nav className="flex-1 space-y-2">
-          <Link href="/dashboard" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm sidebar-active text-primary">
-            <LayoutGrid size={20} /> Dashboard
-          </Link>
-          <Link href="/history" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
-            <History size={20} /> Cronologia
-          </Link>
-          <Link href="/profile" className="w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50">
-            <User size={20} /> Profilo
-          </Link>
+          <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
+          <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
+          <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+          <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
         </nav>
       </aside>
 
@@ -169,7 +149,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="rounded-2xl h-11 px-4 bg-white border-none shadow-sm gap-2 font-semibold">
+                <Button variant="outline" className="rounded-2xl h-11 px-4 bg-white border-none shadow-sm gap-2 font-semibold text-slate-600">
                   <CalendarIcon size={18} className="text-primary" /> Oggi
                 </Button>
               </PopoverTrigger>
@@ -236,22 +216,25 @@ export default function Dashboard() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl rounded-[32px] p-0 overflow-hidden border-none bg-white">
                 <Tabs defaultValue="camera" className="w-full">
-                  <TabsList className="w-full grid grid-cols-2 h-14 bg-slate-50 border-b">
-                    <TabsTrigger value="camera" className="data-[state=active]:bg-white"><Camera size={18} className="mr-2" /> Foto IA</TabsTrigger>
-                    <TabsTrigger value="manual" className="data-[state=active]:bg-white"><Utensils size={18} className="mr-2" /> Dispensa</TabsTrigger>
+                  <TabsList className="w-full grid grid-cols-2 h-14 bg-slate-50 border-b rounded-none">
+                    <TabsTrigger value="camera" className="data-[state=active]:bg-white rounded-none"><Camera size={18} className="mr-2" /> Foto IA</TabsTrigger>
+                    <TabsTrigger value="manual" className="data-[state=active]:bg-white rounded-none"><Utensils size={18} className="mr-2" /> Dispensa</TabsTrigger>
                   </TabsList>
                   <div className="p-8">
                     <TabsContent value="camera" className="m-0 text-center">
                       <Camera className="w-12 h-12 text-primary mx-auto mb-4" />
                       <Label htmlFor="image-upload" className="block">
-                        <div className="w-full h-14 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer">
+                        <div className="w-full h-14 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer hover:bg-primary/90 transition-all">
                           {isAnalyzing ? <Loader2 className="animate-spin mr-2" /> : "Scegli Foto"}
                         </div>
                         <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isAnalyzing} />
                       </Label>
                     </TabsContent>
                     <TabsContent value="manual" className="m-0 text-center py-10">
-                       <p className="text-slate-400 font-medium">Funzionalità in arrivo...</p>
+                       <p className="text-slate-400 font-medium mb-4">Scegli dalla tua dispensa smart.</p>
+                       <Button asChild variant="outline" className="rounded-2xl border-primary/20 text-primary">
+                         <Link href="/pantry">Vai alla Dispensa</Link>
+                       </Button>
                     </TabsContent>
                   </div>
                 </Tabs>
@@ -259,7 +242,7 @@ export default function Dashboard() {
             </Dialog>
           </div>
           
-          <div className="space-y-6">
+          <div className="grid gap-6">
             {meals.map((meal: any) => (
               <MealCard key={meal.id} meal={meal} />
             ))}
@@ -268,6 +251,22 @@ export default function Dashboard() {
         </section>
       </main>
     </div>
+  );
+}
+
+function SidebarLink({ href, icon, label, active }: { href: string, icon: React.ReactNode, label: string, active?: boolean }) {
+  return (
+    <Link 
+      href={href} 
+      className={cn(
+        "w-full flex items-center gap-4 py-4 px-3 rounded-2xl transition-all font-semibold text-sm",
+        active 
+          ? "bg-primary/10 text-primary border-l-4 border-primary shadow-sm" 
+          : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+      )}
+    >
+      {icon} {label}
+    </Link>
   );
 }
 
