@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -132,6 +132,9 @@ export default function HistoryPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-6">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Menu di Navigazione</SheetTitle>
+              </SheetHeader>
               <div className="flex items-center gap-3 mb-12">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                   <Zap className="w-6 h-6 fill-current" />

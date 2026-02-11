@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
 import { useRouter, usePathname } from 'next/navigation';
@@ -253,6 +253,9 @@ export default function Dashboard() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-6">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Menu di Navigazione</SheetTitle>
+              </SheetHeader>
               <div className="flex items-center gap-3 mb-12">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                   <Zap className="w-6 h-6 fill-current" />
@@ -339,6 +342,9 @@ export default function Dashboard() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-4xl rounded-[32px] p-0 overflow-hidden border-none bg-white">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Aggiungi Nuovo Pasto</DialogTitle>
+                  </DialogHeader>
                   <Tabs defaultValue="camera" className="w-full">
                     <TabsList className="w-full grid grid-cols-2 h-14 bg-slate-50 border-b rounded-none">
                       <TabsTrigger value="camera" className="data-[state=active]:bg-white rounded-none h-full"><Camera size={18} className="mr-2" /> Foto IA</TabsTrigger>
@@ -434,6 +440,9 @@ export default function Dashboard() {
                                   <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Tipo Pasto</Label>
                                     <Select value={mealType} onValueChange={setMealType}>
+                                      <SelectTrigger className="h-10 rounded-xl">
+                                        <SelectValue placeholder="Tipo pasto" />
+                                      </SelectTrigger>
                                       <SelectContent>
                                         <SelectItem value="colazione">Colazione</SelectItem>
                                         <SelectItem value="pranzo">Pranzo</SelectItem>

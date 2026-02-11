@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -166,6 +166,9 @@ export default function ProfilePage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-6">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Menu di Navigazione</SheetTitle>
+              </SheetHeader>
               <div className="flex items-center gap-3 mb-12">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                   <Zap className="w-6 h-6 fill-current" />

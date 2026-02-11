@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -129,6 +129,9 @@ export default function ProgressPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-6">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Menu di Navigazione</SheetTitle>
+              </SheetHeader>
               <div className="flex items-center gap-3 mb-12">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
                   <Zap className="w-6 h-6 fill-current" />
