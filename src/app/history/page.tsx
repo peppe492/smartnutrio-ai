@@ -240,14 +240,15 @@ export default function HistoryPage() {
                 locale={it}
                 classNames={{
                   months: "w-full",
-                  month: "w-full space-y-6",
-                  caption: "hidden",
+                  month: "w-full",
+                  caption: "hidden", // Completely hide internal header/caption
+                  nav: "hidden", // Completely hide internal navigation
                   table: "w-full border-collapse",
                   head_row: "grid grid-cols-7 mb-4",
                   head_cell: "text-slate-300 font-bold text-[10px] uppercase text-center tracking-widest",
                   row: "grid grid-cols-7 w-full mt-2",
                   cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                  day: "hidden", // We hide the default day completely as we provide our own cell
+                  day: "hidden", 
                   day_selected: "hidden", 
                   day_today: "hidden",
                   day_outside: "hidden",
