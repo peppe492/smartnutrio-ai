@@ -67,16 +67,23 @@ export default function PantryPage() {
   }, [allIngredients, searchTerm]);
 
   useEffect(() => {
+    let scannerInstance: any = null;
+    
     if (isScanning && typeof window !== 'undefined') {
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
         const timeoutId = setTimeout(() => {
           const readerElement = document.getElementById("pantry-reader");
           if (readerElement) {
             try {
-              const scannerInstance = new Html5QrcodeScanner(
+              scannerInstance = new Html5QrcodeScanner(
                 "pantry-reader",
-                { fps: 10, qrbox: { width: 250, height: 150 } },
-                false
+                { 
+                  fps: 10, 
+                  qrbox: { width: 250, height: 150 },
+                  aspectRatio: 1.0,
+                  rememberLastUsedCamera: true,
+                },
+                /* verbose= */ false
               );
               scannerInstance.render(onScanSuccess, onScanFailure);
               scannerRef.current = scannerInstance;
@@ -84,20 +91,24 @@ export default function PantryPage() {
               console.error("Errore scanner:", err);
             }
           }
-        }, 300);
+        }, 500);
+        return () => clearTimeout(timeoutId);
       });
     }
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
+        scannerRef.current.clear().catch((err: any) => console.error("Error clearing scanner", err));
         scannerRef.current = null;
       }
     };
   }, [isScanning]);
 
   async function onScanSuccess(decodedText: string) {
-    if (scannerRef.current) scannerRef.current.pause();
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(() => {});
+      scannerRef.current = null;
+    }
     setIsScanning(false);
     setIsFetching(true);
     try {
@@ -123,7 +134,9 @@ export default function PantryPage() {
     }
   }
 
-  function onScanFailure() {}
+  function onScanFailure(error: any) {
+    // Silently handle scan errors
+  }
 
   const handleAddIngredient = () => {
     if (!user || !db || !newIngredient.name) return;
@@ -273,8 +286,11 @@ export default function PantryPage() {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden border-none">
+                        <DialogHeader className="sr-only">
+                          <DialogTitle>Scannerizza Codice a Barre</DialogTitle>
+                        </DialogHeader>
                         <div id="pantry-reader" className="w-full" />
-                        <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10" onClick={() => setIsScanning(false)}><X /></Button>
+                        <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10 z-50" onClick={() => setIsScanning(false)}><X /></Button>
                       </DialogContent>
                     </Dialog>
                   </div>

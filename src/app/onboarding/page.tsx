@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
 import { ArrowRight, ChevronLeft, Trash2, ScanBarcode, X, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -70,7 +70,6 @@ export default function Onboarding() {
   useEffect(() => {
     async function checkProfile() {
       if (mounted && user && db) {
-        // Se siamo in modalità edit, non reindirizziamo alla dashboard
         if (isEditing) {
           setCheckingProfile(false);
           return;
@@ -91,16 +90,23 @@ export default function Onboarding() {
   }, [user, authLoading, db, mounted, router, isFinishing, isEditing]);
 
   useEffect(() => {
+    let scannerInstance: any = null;
+    
     if (isScanning && typeof window !== 'undefined') {
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
         const timeoutId = setTimeout(() => {
           const readerElement = document.getElementById("reader");
           if (readerElement) {
             try {
-              const scannerInstance = new Html5QrcodeScanner(
+              scannerInstance = new Html5QrcodeScanner(
                 "reader",
-                { fps: 10, qrbox: { width: 250, height: 150 } },
-                false
+                { 
+                  fps: 10, 
+                  qrbox: { width: 250, height: 150 },
+                  aspectRatio: 1.0,
+                  rememberLastUsedCamera: true,
+                },
+                /* verbose= */ false
               );
               scannerInstance.render(onScanSuccess, onScanFailure);
               scannerRef.current = scannerInstance;
@@ -108,20 +114,24 @@ export default function Onboarding() {
               console.error("Errore scanner:", err);
             }
           }
-        }, 300);
+        }, 500);
+        return () => clearTimeout(timeoutId);
       });
     }
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
+        scannerRef.current.clear().catch((err: any) => console.error("Error clearing scanner", err));
         scannerRef.current = null;
       }
     };
   }, [isScanning]);
 
   async function onScanSuccess(decodedText: string) {
-    if (scannerRef.current) scannerRef.current.pause();
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(() => {});
+      scannerRef.current = null;
+    }
     setIsScanning(false);
     setIsFetching(true);
     try {
@@ -147,7 +157,9 @@ export default function Onboarding() {
     }
   }
 
-  function onScanFailure() {}
+  function onScanFailure(error: any) {
+    // Silently handle scan errors (common during focus search)
+  }
 
   const handleNext = () => setStep(step + 1);
   const handlePrev = () => setStep(step - 1);
@@ -303,8 +315,11 @@ export default function Onboarding() {
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden border-none">
+                      <DialogHeader className="sr-only">
+                        <DialogTitle>Scannerizza Codice a Barre</DialogTitle>
+                      </DialogHeader>
                       <div id="reader" className="w-full" />
-                      <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10" onClick={() => setIsScanning(false)}><X /></Button>
+                      <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10 z-50" onClick={() => setIsScanning(false)}><X /></Button>
                     </DialogContent>
                   </Dialog>
                 </div>
