@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -12,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
 import { ArrowRight, ChevronLeft, Plus, Trash2, Utensils, ScanBarcode, X, Loader2 } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase';
 import { collection, doc, setDoc, addDoc } from 'firebase/firestore';
@@ -32,6 +30,7 @@ export default function Onboarding() {
   const { user } = useAuth();
   const db = useFirestore();
   
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     gender: 'male' as 'male' | 'female',
@@ -56,30 +55,37 @@ export default function Onboarding() {
 
   const [isScanning, setIsScanning] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<any>(null);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (isScanning) {
-      timeoutId = setTimeout(() => {
-        const readerElement = document.getElementById("reader");
-        if (readerElement) {
-          try {
-            const scanner = new Html5QrcodeScanner(
-              "reader",
-              { fps: 10, qrbox: { width: 250, height: 150 } },
-              false
-            );
-            scanner.render(onScanSuccess, onScanFailure);
-            scannerRef.current = scanner;
-          } catch (err) {
-            console.error("Errore scanner:", err);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let scannerInstance: any = null;
+    
+    if (isScanning && typeof window !== 'undefined') {
+      import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
+        const timeoutId = setTimeout(() => {
+          const readerElement = document.getElementById("reader");
+          if (readerElement) {
+            try {
+              scannerInstance = new Html5QrcodeScanner(
+                "reader",
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                false
+              );
+              scannerInstance.render(onScanSuccess, onScanFailure);
+              scannerRef.current = scannerInstance;
+            } catch (err) {
+              console.error("Errore scanner:", err);
+            }
           }
-        }
-      }, 300);
+        }, 300);
+      });
     }
+
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
       if (scannerRef.current) {
         scannerRef.current.clear().catch(() => {});
         scannerRef.current = null;
@@ -141,11 +147,9 @@ export default function Onboarding() {
     });
 
     try {
-      // Salva il profilo utente/TDEE
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, { tdeeGoal: tdee }, { merge: true });
 
-      // Salva gli ingredienti su Firestore
       const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
       for (const ing of ingredients) {
         await addDoc(ingredientsCol, ing);
@@ -158,6 +162,8 @@ export default function Onboarding() {
       toast({ variant: "destructive", title: "Errore salvataggio" });
     }
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-nutrio-bg flex items-center justify-center p-4">
@@ -232,10 +238,10 @@ export default function Onboarding() {
                   <Label className="font-bold">Aggiungi ingrediente</Label>
                   <Dialog open={isScanning} onOpenChange={setIsScanning}>
                     <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full"><ScanBarcode size={16} className="mr-2" /> Scanner</Button></DialogTrigger>
-                    <DialogContent className="p-0 bg-black"><div id="reader" className="w-full" /><Button variant="ghost" className="absolute top-4 right-4 text-white" onClick={() => setIsScanning(false)}><X /></Button></DialogContent>
+                    <DialogContent className="p-0 bg-black max-w-sm"><div id="reader" className="w-full" /><Button variant="ghost" className="absolute top-4 right-4 text-white" onClick={() => setIsScanning(false)}><X /></Button></DialogContent>
                   </Dialog>
                 </div>
-                {isFetching && <div className="text-center text-nutrio-mint font-bold animate-pulse">Ricerca...</div>}
+                {isFetching && <div className="text-center text-nutrio-mint font-bold animate-pulse">Ricerca prodotto...</div>}
                 <div className="grid grid-cols-2 gap-3">
                   <Input placeholder="Nome" className="col-span-2" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
                   <Input placeholder="kcal" type="number" value={newIngredient.calories} onChange={e => setNewIngredient({...newIngredient, calories: Number(e.target.value)})} />
@@ -243,7 +249,7 @@ export default function Onboarding() {
                   <Input placeholder="Carb" type="number" value={newIngredient.carbs} onChange={e => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})} />
                   <Input placeholder="Grass" type="number" value={newIngredient.fat} onChange={e => setNewIngredient({...newIngredient, fat: Number(e.target.value)})} />
                 </div>
-                <Button onClick={addIngredient} className="w-full bg-slate-900 text-white">Aggiungi</Button>
+                <Button onClick={addIngredient} className="w-full bg-slate-900 text-white">Salva in Dispensa</Button>
               </div>
               <div className="max-h-48 overflow-y-auto space-y-2">
                 {ingredients.map((ing, i) => (
@@ -259,7 +265,7 @@ export default function Onboarding() {
             </div>
           )}
           <Button className="w-full h-14 bg-nutrio-mint text-white font-bold" onClick={step < 4 ? handleNext : finish}>
-            {step < 4 ? 'Continua' : 'Fine'} <ArrowRight className="ml-2" />
+            {step < 4 ? 'Continua' : 'Completato'} <ArrowRight className="ml-2" />
           </Button>
         </CardContent>
       </Card>

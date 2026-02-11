@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -7,8 +6,8 @@ import { it } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
   Plus, Camera, Pencil, Calendar as CalendarIcon, 
-  History, LayoutGrid, BarChart2, Utensils, 
-  Settings, Bell, Dumbbell, Droplets, Sparkles, Trash2, Check, Zap, Scale, ArrowRight, User
+  History, LayoutGrid, Utensils, 
+  Droplets, Sparkles, Trash2, Check, Zap, User, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -63,8 +62,14 @@ export default function Dashboard() {
   const [date, setDate] = useState<Date | null>(null);
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const [mealType, setMealType] = useState('pranzo');
-  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     setDate(new Date());
   }, []);
 
@@ -77,26 +82,21 @@ export default function Dashboard() {
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
 
   useEffect(() => {
-    if (!authLoading && !profileLoading && user && !userProfile) {
+    if (mounted && !authLoading && !profileLoading && user && userProfile === null) {
       router.push('/onboarding');
     }
-  }, [user, userProfile, authLoading, profileLoading, router]);
+  }, [user, userProfile, authLoading, profileLoading, router, mounted]);
 
   const dailyGoal = userProfile?.tdeeGoal || 2000;
   
   const meals = useMemo(() => {
-    if (!date) return [];
+    if (!date || !allMeals) return [];
     return allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
   }, [allMeals, date]);
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
-
   const totals = useMemo(() => {
     return meals.reduce((acc, meal) => ({
-      calories: acc.calories + meal.calories,
+      calories: acc.calories + (meal.calories || 0),
       protein: acc.protein + (meal.macros?.protein || 0),
       carbs: acc.carbs + (meal.macros?.carbs || 0),
       fat: acc.fat + (meal.macros?.fat || 0)
@@ -187,7 +187,15 @@ export default function Dashboard() {
     setEditingMeal(null);
   };
 
-  if (authLoading || profileLoading || !date) return <div className="p-20 text-center"><Zap className="animate-spin inline mr-2 text-primary" /> Caricamento profilo...</div>;
+  if (!mounted || authLoading || profileLoading || !date) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FA]">
+        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+        <p className="text-slate-400 font-medium">Caricamento del tuo piano alimentare...</p>
+      </div>
+    );
+  }
+
   if (!user) return <div className="p-20 text-center">Effettua il login per accedere.</div>;
 
   return (
@@ -212,7 +220,10 @@ export default function Dashboard() {
         </nav>
         <div className="space-y-4 pt-8 border-t">
           <Link href="/profile" className="bg-[#F8FAFC] rounded-2xl p-3 flex items-center gap-3 hover:bg-slate-100 transition-colors">
-            <Avatar className="w-10 h-10"><AvatarImage src={user.photoURL || undefined} /><AvatarFallback>{user.displayName?.[0] || 'U'}</AvatarFallback></Avatar>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "Avatar"} />
+              <AvatarFallback>{user.displayName?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-slate-900 truncate w-32">{user.displayName || 'Utente'}</span>
               <span className="text-[10px] text-slate-400 font-medium">Membro Pro</span>
@@ -280,7 +291,7 @@ export default function Dashboard() {
           </Card>
 
           <div className="xl:col-span-3 flex flex-col gap-6">
-            <MacroRow icon={<Dumbbell className="text-blue-500" size={18} />} label="Proteine" current={totals.protein} goal={150} color="bg-blue-500" bgColor="bg-blue-50" />
+            <MacroRow icon={<Zap className="text-blue-500" size={18} />} label="Proteine" current={totals.protein} goal={150} color="bg-blue-500" bgColor="bg-blue-50" />
             <MacroRow icon={<Utensils className="text-yellow-500" size={18} />} label="Carboidrati" current={totals.carbs} goal={300} color="bg-yellow-500" bgColor="bg-yellow-50" />
             <MacroRow icon={<Droplets className="text-purple-500" size={18} />} label="Grassi" current={totals.fat} goal={80} color="bg-purple-500" bgColor="bg-purple-50" />
           </div>
@@ -317,7 +328,10 @@ export default function Dashboard() {
                     <TabsContent value="camera" className="m-0 text-center">
                       <Camera className="w-12 h-12 text-primary mx-auto mb-4" />
                       <Label htmlFor="image-upload" className="block">
-                        <div className="w-full h-14 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer">{isAnalyzing ? "Analisi..." : "Scegli Foto"}</div>
+                        <div className="w-full h-14 bg-primary text-white rounded-2xl flex items-center justify-center font-bold cursor-pointer">
+                          {isAnalyzing ? <Loader2 className="animate-spin mr-2" /> : null}
+                          {isAnalyzing ? "Analisi..." : "Scegli Foto"}
+                        </div>
                         <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isAnalyzing} />
                       </Label>
                     </TabsContent>
