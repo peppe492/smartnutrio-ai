@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format, differenceInDays, isAfter, startOfDay } from 'date-fns';
+import { format, differenceInDays, isAfter, startOfDay, isValid, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
@@ -87,11 +87,13 @@ export default function Dashboard() {
   const dailyGoal = userProfile?.tdeeGoal || 2000;
   
   const meals = useMemo(() => {
-    if (!date || !allMeals) return [];
+    if (!date || !allMeals || !isValid(date)) return [];
     const dateStr = format(date, 'yyyy-MM-dd');
     return allMeals.filter((m: any) => {
       try {
-        return format(new Date(m.timestamp), 'yyyy-MM-dd') === dateStr;
+        if (!m.timestamp) return false;
+        const d = typeof m.timestamp === 'string' ? parseISO(m.timestamp) : new Date(m.timestamp);
+        return isValid(d) && format(d, 'yyyy-MM-dd') === dateStr;
       } catch (e) {
         return false;
       }
@@ -111,6 +113,8 @@ export default function Dashboard() {
     if (!userProfile?.dietStartDate || !userProfile?.dietEndDate) return null;
     const start = new Date(userProfile.dietStartDate);
     const end = new Date(userProfile.dietEndDate);
+    if (!isValid(start) || !isValid(end)) return null;
+    
     const today = startOfDay(new Date());
 
     const totalDays = Math.max(1, differenceInDays(end, start));
@@ -300,7 +304,7 @@ export default function Dashboard() {
           <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Buongiorno, {user?.displayName?.split(' ')[0]} 👋</h1>
-              <p className="text-slate-400 font-medium text-sm">{date ? format(date, 'EEEE, d MMMM', { locale: it }) : 'Caricamento...'}</p>
+              <p className="text-slate-400 font-medium text-sm">{date && isValid(date) ? format(date, 'EEEE, d MMMM', { locale: it }) : 'Caricamento...'}</p>
             </div>
             <div className="flex items-center gap-4">
               <Popover>
@@ -619,7 +623,7 @@ function MealCard({ meal }: any) {
       </div>
       <div className="text-right">
         <div className="font-black text-xl text-slate-900">{meal.calories}</div>
-        <div className="text-[9px] text-slate-400 font-bold uppercase">Kcal</div>
+        <div className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Kcal</div>
       </div>
     </Card>
   );

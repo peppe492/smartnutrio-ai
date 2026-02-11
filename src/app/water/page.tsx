@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format, startOfDay, endOfDay, isToday } from 'date-fns';
+import { format, startOfDay, endOfDay, isToday, isValid } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -43,7 +43,10 @@ export default function WaterPage() {
 
   const dailyTotal = useMemo(() => {
     return allLogs
-      .filter(log => isToday(new Date(log.timestamp)))
+      .filter(log => {
+        const d = new Date(log.timestamp);
+        return isValid(d) && isToday(d);
+      })
       .reduce((sum, log) => sum + log.amount, 0);
   }, [allLogs]);
 
@@ -56,7 +59,10 @@ export default function WaterPage() {
 
     return last7Days.map(dateStr => {
       const totalForDay = allLogs
-        .filter(log => format(new Date(log.timestamp), 'yyyy-MM-dd') === dateStr)
+        .filter(log => {
+          const d = new Date(log.timestamp);
+          return isValid(d) && format(d, 'yyyy-MM-dd') === dateStr;
+        })
         .reduce((sum, log) => sum + log.amount, 0);
       
       return {
@@ -262,7 +268,10 @@ export default function WaterPage() {
             <h2 className="text-xl font-bold text-slate-900 mb-6">Log Odierno</h2>
             <div className="space-y-4">
               {allLogs
-                .filter(log => isToday(new Date(log.timestamp)))
+                .filter(log => {
+                  const d = new Date(log.timestamp);
+                  return isValid(d) && isToday(d);
+                })
                 .slice().reverse().map((log: any) => (
                 <Card key={log.id} className="border-none rounded-3xl bg-white nutrio-shadow p-6 flex items-center justify-between group">
                   <div className="flex items-center gap-6">
@@ -279,7 +288,10 @@ export default function WaterPage() {
                   </Button>
                 </Card>
               ))}
-              {allLogs.filter(log => isToday(new Date(log.timestamp))).length === 0 && (
+              {allLogs.filter(log => {
+                const d = new Date(log.timestamp);
+                return isValid(d) && isToday(d);
+              }).length === 0 && (
                 <div className="text-center py-20 bg-white/50 border-2 border-dashed rounded-[40px]">
                   <p className="text-slate-400 font-medium">Ancora nessuna bevuta oggi. Inizia subito!</p>
                 </div>

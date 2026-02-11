@@ -221,7 +221,7 @@ export default function HistoryPage() {
             <Card className="xl:col-span-1 bg-white p-8 rounded-[40px] border-none shadow-xl flex flex-col">
               <div className="w-full flex items-center justify-between mb-8">
                 <div className="flex items-center gap-1.5 cursor-pointer">
-                  <span className="text-lg font-bold text-slate-900 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: it })}</span>
+                  <span className="text-lg font-bold text-slate-900 capitalize">{currentMonth && isValid(currentMonth) ? format(currentMonth, 'MMMM yyyy', { locale: it }) : ''}</span>
                   <ChevronDown size={16} className="text-slate-400" />
                 </div>
                 <div className="flex gap-4">
@@ -254,7 +254,7 @@ export default function HistoryPage() {
                 }}
                 components={{
                   Day: ({ day }: any) => {
-                    const date = day.date;
+                    const date = day?.date;
                     if (!date || !isValid(date)) return null;
 
                     const dateStr = format(date, 'yyyy-MM-dd');

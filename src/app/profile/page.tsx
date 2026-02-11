@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
-import { format, differenceInDays, isAfter, isBefore, startOfDay } from 'date-fns';
+import { format, differenceInDays, isAfter, isBefore, startOfDay, isValid } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 export default function ProfilePage() {
@@ -128,6 +128,8 @@ export default function ProfilePage() {
     
     const start = new Date(userProfile.dietStartDate);
     const end = new Date(userProfile.dietEndDate);
+    if (!isValid(start) || !isValid(end)) return null;
+    
     const today = startOfDay(new Date());
 
     if (isBefore(today, start)) {
@@ -138,7 +140,7 @@ export default function ProfilePage() {
       return { status: 'completed', label: 'Dieta conclusa' };
     }
 
-    const totalDays = differenceInDays(end, start);
+    const totalDays = Math.max(1, differenceInDays(end, start));
     const elapsedDays = differenceInDays(today, start);
     const remainingDays = differenceInDays(end, today);
     const progressPercent = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
@@ -385,8 +387,8 @@ export default function ProfilePage() {
                             />
                           </div>
                           <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
-                            <span>{format(new Date(userProfile.dietStartDate), 'dd MMM', { locale: it })}</span>
-                            <span>{format(new Date(userProfile.dietEndDate), 'dd MMM', { locale: it })}</span>
+                            <span>{userProfile.dietStartDate && isValid(new Date(userProfile.dietStartDate)) ? format(new Date(userProfile.dietStartDate), 'dd MMM', { locale: it }) : ''}</span>
+                            <span>{userProfile.dietEndDate && isValid(new Date(userProfile.dietEndDate)) ? format(new Date(userProfile.dietEndDate), 'dd MMM', { locale: it }) : ''}</span>
                           </div>
                         </div>
                       </>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
@@ -46,12 +46,15 @@ export default function ProgressPage() {
   const { data: allEntries = [], loading: progressLoading } = useCollection<any>(progressQuery);
 
   const chartData = useMemo(() => {
-    return allEntries.map(entry => ({
-      date: format(new Date(entry.timestamp), 'dd/MM'),
-      weight: entry.weight,
-      waist: entry.waist || null,
-      bodyFat: entry.bodyFat || null,
-    }));
+    return allEntries.map(entry => {
+      const d = new Date(entry.timestamp);
+      return {
+        date: isValid(d) ? format(d, 'dd/MM') : '--/--',
+        weight: entry.weight,
+        waist: entry.waist || null,
+        bodyFat: entry.bodyFat || null,
+      };
+    });
   }, [allEntries]);
 
   const latestEntry = allEntries[allEntries.length - 1];
@@ -196,7 +199,7 @@ export default function ProgressPage() {
                   <p className="text-3xl font-black text-slate-900">{latestEntry?.weight || '--'} <span className="text-sm text-slate-400 font-bold">kg</span></p>
                 </div>
               </div>
-              <p className="text-xs text-slate-400 font-medium">Ultimo aggiornamento: {latestEntry ? format(new Date(latestEntry.timestamp), 'd MMM yyyy', { locale: it }) : 'Nessun dato'}</p>
+              <p className="text-xs text-slate-400 font-medium">Ultimo aggiornamento: {latestEntry && isValid(new Date(latestEntry.timestamp)) ? format(new Date(latestEntry.timestamp), 'd MMM yyyy', { locale: it }) : 'Nessun dato'}</p>
             </Card>
 
             <Card className="border-none rounded-[32px] bg-white nutrio-shadow p-8 flex flex-col justify-center">
@@ -261,34 +264,37 @@ export default function ProgressPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-6">Registro Storico</h2>
             <div className="space-y-4">
-              {allEntries.slice().reverse().map((entry: any) => (
-                <Card key={entry.id} className="border-none rounded-3xl bg-white nutrio-shadow p-6 flex items-center justify-between group">
-                  <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                      <CalendarIcon size={20} />
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900">{format(new Date(entry.timestamp), 'd MMMM yyyy', { locale: it })}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">{format(new Date(entry.timestamp), 'HH:mm')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-8">
-                    <div className="text-center">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">Peso</p>
-                      <p className="font-black text-slate-900">{entry.weight} kg</p>
-                    </div>
-                    {entry.waist && (
-                      <div className="text-center">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Vita</p>
-                        <p className="font-black text-slate-900">{entry.waist} cm</p>
+              {allEntries.slice().reverse().map((entry: any) => {
+                const d = new Date(entry.timestamp);
+                return (
+                  <Card key={entry.id} className="border-none rounded-3xl bg-white nutrio-shadow p-6 flex items-center justify-between group">
+                    <div className="flex items-center gap-6">
+                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <CalendarIcon size={20} />
                       </div>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100" onClick={() => handleDeleteEntry(entry.id)}>
-                      <Trash2 size={18} />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                      <div>
+                        <p className="font-bold text-slate-900">{isValid(d) ? format(d, 'd MMMM yyyy', { locale: it }) : '--'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase">{isValid(d) ? format(d, 'HH:mm') : '--'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-8">
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Peso</p>
+                        <p className="font-black text-slate-900">{entry.weight} kg</p>
+                      </div>
+                      {entry.waist && (
+                        <div className="text-center">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Vita</p>
+                          <p className="font-black text-slate-900">{entry.waist} cm</p>
+                        </div>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100" onClick={() => handleDeleteEntry(entry.id)}>
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
               {allEntries.length === 0 && (
                 <div className="text-center py-20 bg-white/50 border-2 border-dashed rounded-[40px]">
                   <p className="text-slate-400 font-medium">Inizia a registrare il tuo peso per vedere i progressi!</p>
