@@ -2,11 +2,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format, startOfDay } from 'date-fns';
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
   Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets,
-  Coffee, Sun, Moon, Apple, Clock, Calendar as CalendarIcon, ChevronRight
+  Coffee, Sun, Moon, Apple, Clock, Calendar as CalendarIcon, ChevronRight, ChevronLeft, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -18,7 +18,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth, useFirestore, useCollection } from '@/firebase';
+import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -36,8 +36,28 @@ export default function HistoryPage() {
     setMounted(true);
   }, []);
 
+  const userProfileRef = useMemo(() => user && db ? doc(db, 'users', user.uid) : null, [db, user]);
+  const { data: userProfile } = useDoc(userProfileRef);
+  const dailyGoal = userProfile?.tdeeGoal || 2000;
+
   const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
   const { data: allMeals = [] } = useCollection(mealsQuery);
+
+  // Calcola lo stato per ogni giorno per i puntini colorati
+  const dailyStatusMap = useMemo(() => {
+    const map: Record<string, 'met' | 'exceeded' | 'none'> = {};
+    
+    allMeals.forEach((meal: any) => {
+      const dateStr = format(new Date(meal.timestamp), 'yyyy-MM-dd');
+      if (!map[dateStr]) {
+        const dayMeals = allMeals.filter((m: any) => format(new Date(m.timestamp), 'yyyy-MM-dd') === dateStr);
+        const totalCals = dayMeals.reduce((acc: number, m: any) => acc + (m.calories || 0), 0);
+        map[dateStr] = totalCals > dailyGoal ? 'exceeded' : 'met';
+      }
+    });
+    
+    return map;
+  }, [allMeals, dailyGoal]);
 
   const mealsForSelectedDay = useMemo(() => {
     if (!selectedDate) return [];
@@ -185,25 +205,92 @@ export default function HistoryPage() {
               <h1 className="text-2xl font-bold text-slate-900">Cronologia Nutrizionale 📅</h1>
               <p className="text-slate-400 font-medium text-sm">Visualizza e gestisci i tuoi log passati.</p>
             </div>
-            <div className="hidden sm:block">
-               <div className="px-4 py-2 bg-white rounded-2xl shadow-sm border text-xs font-bold text-slate-500 flex items-center gap-2">
-                 <Clock size={14} className="text-primary" /> Log Aggiornato
-               </div>
-            </div>
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <Card className="xl:col-span-1 bg-white p-6 rounded-[32px] border-none shadow-sm flex flex-col items-center">
-              <div className="mb-4 text-center">
-                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Seleziona Data</span>
+            <Card className="xl:col-span-1 bg-white p-8 rounded-[40px] border-none shadow-xl flex flex-col items-center">
+              <div className="w-full flex items-center justify-between mb-8">
+                <div className="flex items-center gap-1.5 cursor-pointer">
+                  <span className="text-lg font-bold text-slate-900">{selectedDate ? format(selectedDate, 'MMMM yyyy', { locale: it }) : 'Seleziona'}</span>
+                  <ChevronDown size={16} className="text-slate-400" />
+                </div>
+                <div className="flex gap-4">
+                   <ChevronLeft size={20} className="text-slate-400 cursor-pointer hover:text-primary transition-colors" />
+                   <ChevronRight size={20} className="text-slate-400 cursor-pointer hover:text-primary transition-colors" />
+                </div>
               </div>
+
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
-                className="rounded-md border-none p-0"
+                className="rounded-md border-none p-0 w-full"
                 locale={it}
+                classNames={{
+                  months: "w-full",
+                  month: "w-full space-y-6",
+                  caption: "hidden", // Nascondiamo il caption di default perché lo abbiamo fatto custom
+                  table: "w-full border-collapse",
+                  head_row: "flex justify-between mb-4",
+                  head_cell: "text-slate-300 font-bold text-[10px] uppercase w-10 text-center tracking-widest",
+                  row: "flex justify-between w-full mt-4",
+                  cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
+                  day: cn(
+                    "h-10 w-10 p-0 font-bold transition-all rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-50",
+                  ),
+                  day_selected: "bg-[#4ADE80] text-white hover:bg-[#4ADE80] hover:text-white focus:bg-[#4ADE80] focus:text-white shadow-lg shadow-[#4ADE80]/30 scale-125 z-10",
+                  day_today: "text-primary border border-primary/20",
+                  day_outside: "text-slate-200 opacity-50",
+                }}
+                components={{
+                  Day: ({ date, displayMonth }: any) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const status = dailyStatusMap[dateStr];
+                    const isSelected = selectedDate && isSameDay(date, selectedDate);
+                    
+                    return (
+                      <div 
+                        onClick={() => setSelectedDate(date)}
+                        className={cn(
+                          "relative flex flex-col items-center justify-center cursor-pointer group h-14 w-10",
+                          !isSameDay(date, displayMonth) && "opacity-20"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-10 w-10 flex items-center justify-center rounded-full font-bold transition-all",
+                          isSelected ? "bg-[#4ADE80] text-white scale-125 shadow-lg shadow-[#4ADE80]/20" : "text-slate-600 hover:bg-slate-50"
+                        )}>
+                          {format(date, 'd')}
+                        </div>
+                        {!isSelected && status && (
+                          <div className={cn(
+                            "absolute -bottom-1 w-1.5 h-1.5 rounded-full",
+                            status === 'met' ? "bg-emerald-400" : "bg-orange-400"
+                          )} />
+                        )}
+                        {isSelected && (
+                           <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-white z-20" />
+                        )}
+                      </div>
+                    );
+                  }
+                }}
               />
+
+              <div className="w-full mt-10 pt-8 border-t border-slate-50 flex justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Obiettivo OK</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-orange-400" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Soglia Superata</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-slate-200" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Nessun Dato</span>
+                </div>
+              </div>
             </Card>
 
             <div className="xl:col-span-2 space-y-6">
@@ -213,7 +300,7 @@ export default function HistoryPage() {
                 <MacroCard label="Grassi" value={`${Math.round(dailyStats.fat)}g`} progress={Math.min(100, (dailyStats.fat/80)*100)} color="text-purple-500" bgColor="bg-purple-50" />
               </div>
 
-              <Card className="bg-white rounded-[32px] border-none shadow-sm overflow-hidden flex flex-col">
+              <Card className="bg-white rounded-[40px] border-none shadow-xl overflow-hidden flex flex-col">
                 <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                   <div className="text-center sm:text-left">
                     <h3 className="text-xl font-bold text-slate-900">
