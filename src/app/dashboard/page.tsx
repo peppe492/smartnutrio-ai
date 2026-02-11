@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -82,8 +83,12 @@ export default function Dashboard() {
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
 
   useEffect(() => {
-    if (mounted && !authLoading && !profileLoading && user && userProfile === null) {
-      router.push('/onboarding');
+    if (mounted && !authLoading) {
+      if (!user) {
+        router.replace('/');
+      } else if (!profileLoading && userProfile === null) {
+        router.push('/onboarding');
+      }
     }
   }, [user, userProfile, authLoading, profileLoading, router, mounted]);
 
@@ -187,16 +192,14 @@ export default function Dashboard() {
     setEditingMeal(null);
   };
 
-  if (!mounted || authLoading || profileLoading || !date) {
+  if (!mounted || authLoading || !user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FA]">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-        <p className="text-slate-400 font-medium">Caricamento del tuo piano alimentare...</p>
+        <p className="text-slate-400 font-medium">Caricamento...</p>
       </div>
     );
   }
-
-  if (!user) return <div className="p-20 text-center">Effettua il login per accedere.</div>;
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
@@ -236,7 +239,7 @@ export default function Dashboard() {
         <header className="flex items-center justify-between mb-10">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Buongiorno, {user.displayName?.split(' ')[0]} 👋</h1>
-            <p className="text-slate-400 font-medium text-sm">{format(date, 'EEEE, d MMMM', { locale: it })}</p>
+            <p className="text-slate-400 font-medium text-sm">{format(date || new Date(), 'EEEE, d MMMM', { locale: it })}</p>
           </div>
           <div className="flex items-center gap-4">
             <Popover>
@@ -246,7 +249,7 @@ export default function Dashboard() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} locale={it} />
+                <Calendar mode="single" selected={date || new Date()} onSelect={(d) => d && setDate(d)} locale={it} />
               </PopoverContent>
             </Popover>
           </div>
