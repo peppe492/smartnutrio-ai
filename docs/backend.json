@@ -47,6 +47,16 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["weight", "timestamp"]
+    },
+    "WaterLog": {
+      "title": "Registro Acqua",
+      "description": "Registrazione del consumo di acqua",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "Quantità in ml" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "timestamp"]
     }
   },
   "auth": {
@@ -64,6 +74,10 @@
     "/users/{userId}/progress/{progressId}": {
       "schema": "#/backend/entities/ProgressEntry",
       "description": "Storico peso e misure dell'utente"
+    },
+    "/users/{userId}/water/{waterId}": {
+      "schema": "#/backend/entities/WaterLog",
+      "description": "Registro consumo acqua giornaliero"
     }
   }
 }

@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
-  ChevronLeft, ChevronRight, Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp
+  ChevronLeft, ChevronRight, Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -98,6 +98,7 @@ export default function HistoryPage() {
       <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
       <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
       <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/water" icon={<Droplets size={20} />} label="Acqua" active={pathname === '/water'} />
       <SidebarLink href="/progress" icon={<TrendingUp size={20} />} label="Progressi" active={pathname === '/progress'} />
       <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
     </nav>

@@ -8,7 +8,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 import { 
-  Zap, LayoutGrid, History, User, Utensils, Scale, 
+  Zap, LayoutGrid, History, User, Utensils, Scale, Droplets,
   Plus, Trash2, Loader2, Menu, TrendingUp, Calendar as CalendarIcon, Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,7 @@ export default function ProgressPage() {
       <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
       <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
       <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/water" icon={<Droplets size={20} />} label="Acqua" active={pathname === '/water'} />
       <SidebarLink href="/progress" icon={<TrendingUp size={20} />} label="Progressi" active={pathname === '/progress'} />
       <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
     </nav>

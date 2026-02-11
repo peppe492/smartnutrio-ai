@@ -5,7 +5,7 @@ import { useAuth, useFirestore, useDoc, useAuthInstance } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
   User, Mail, Target, Award, LogOut, ChevronRight, 
-  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2, Menu, Edit2, Sparkles, TrendingUp
+  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2, Menu, Edit2, Sparkles, TrendingUp, Droplets
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -133,6 +133,7 @@ export default function ProfilePage() {
       <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
       <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
       <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/water" icon={<Droplets size={20} />} label="Acqua" active={pathname === '/water'} />
       <SidebarLink href="/progress" icon={<TrendingUp size={20} />} label="Progressi" active={pathname === '/progress'} />
       <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
     </nav>

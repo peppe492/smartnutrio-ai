@@ -219,6 +219,7 @@ export default function Dashboard() {
       <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
       <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
       <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/water" icon={<Droplets size={20} />} label="Acqua" active={pathname === '/water'} />
       <SidebarLink href="/progress" icon={<TrendingUp size={20} />} label="Progressi" active={pathname === '/progress'} />
       <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
     </nav>
@@ -433,7 +434,6 @@ export default function Dashboard() {
                                   <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Tipo Pasto</Label>
                                     <Select value={mealType} onValueChange={setMealType}>
-                                      <SelectTrigger className="h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger>
                                       <SelectContent>
                                         <SelectItem value="colazione">Colazione</SelectItem>
                                         <SelectItem value="pranzo">Pranzo</SelectItem>
