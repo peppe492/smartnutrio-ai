@@ -113,14 +113,18 @@ export default function Dashboard() {
     const end = new Date(userProfile.dietEndDate);
     const today = startOfDay(new Date());
 
-    if (isAfter(today, end)) return { daysRemaining: 0, percent: 100, isFinished: true };
-    
-    const totalDays = differenceInDays(end, start);
-    const elapsedDays = differenceInDays(today, start);
-    const remainingDays = differenceInDays(end, today);
+    const totalDays = Math.max(1, differenceInDays(end, start));
+    const elapsedDays = Math.max(0, differenceInDays(today, start));
+    const remainingDays = Math.max(0, differenceInDays(end, today));
     const percent = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
 
-    return { daysRemaining: remainingDays, percent, isFinished: false };
+    return { 
+      totalDays, 
+      elapsedDays, 
+      daysRemaining: remainingDays, 
+      percent, 
+      isFinished: isAfter(today, end) 
+    };
   }, [userProfile]);
 
   const caloriesLeft = Math.max(0, dailyGoal - totals.calories);
@@ -128,8 +132,8 @@ export default function Dashboard() {
   const mainChartData = useMemo(() => {
     if (dietProgress) {
       return [
-        { name: 'Passati', value: 100 - dietProgress.percent },
-        { name: 'Rimanenti', value: dietProgress.percent }
+        { name: 'Passati', value: dietProgress.elapsedDays },
+        { name: 'Rimanenti', value: dietProgress.daysRemaining }
       ];
     }
     return [
@@ -340,6 +344,11 @@ export default function Dashboard() {
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                     {dietProgress ? 'Giorni alla fine' : 'Kcal Rimanenti'}
                   </span>
+                  {dietProgress && (
+                    <span className="text-[10px] font-bold text-slate-300 mt-2">
+                      Giorno {dietProgress.elapsedDays} di {dietProgress.totalDays}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex justify-between w-full mt-4 px-4">
