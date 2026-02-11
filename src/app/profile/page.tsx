@@ -4,7 +4,7 @@ import { useAuth, useFirestore, useDoc } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
   User, Mail, Target, Award, LogOut, ChevronRight, 
-  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils
+  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { doc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 export default function ProfilePage() {
   const pathname = usePathname();
@@ -21,14 +22,26 @@ export default function ProfilePage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const userProfileQuery = user && db ? doc(db, 'users', user.uid) : null;
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileQuery);
+
+  useEffect(() => {
+    if (mounted && !authLoading && !user) {
+      router.replace('/');
+    }
+  }, [mounted, authLoading, user, router]);
 
   const handleLogout = async () => {
     if (!auth) return;
     try {
       await signOut(auth);
+      sessionStorage.clear();
       router.push('/');
       toast({ title: "Sessione chiusa", description: "A presto!" });
     } catch (error) {
@@ -36,18 +49,16 @@ export default function ProfilePage() {
     }
   };
 
-  if (authLoading || profileLoading) {
+  if (!mounted || authLoading || (user && profileLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]">
-        <Zap className="w-10 h-10 text-primary animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FA]">
+        <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+        <p className="text-slate-400 font-medium">Caricamento profilo...</p>
       </div>
     );
   }
 
-  if (!user) {
-    router.push('/');
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">

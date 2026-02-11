@@ -17,7 +17,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
 
   useEffect(() => {
     if (!query) {
-      setLoading(true);
+      setLoading(false);
       setData([]);
       return;
     }
@@ -35,7 +35,6 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setError(null);
       },
       async (serverError) => {
-        // Fallback sicuro se query non ha una proprietà 'path' diretta (è una query, non una collection)
         const path = (query as any)._query?.path?.toString() || 'unknown collection';
         
         const permissionError = new FirestorePermissionError({

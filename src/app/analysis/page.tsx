@@ -1,16 +1,16 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  ArrowLeft, Zap 
+  ArrowLeft, Zap, Loader2 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth, useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function MealAnalysisPage() {
   const router = useRouter();
@@ -52,7 +52,6 @@ export default function MealAnalysisPage() {
         image: mealData.image || ''
       });
       
-      // Pulisci rigorosamente la cache di sessione dopo il salvataggio per evitare duplicati
       sessionStorage.removeItem('last_meal_analysis');
       
       toast({
@@ -78,17 +77,19 @@ export default function MealAnalysisPage() {
     <div className="min-h-screen bg-[#F6F8F7] font-sans text-slate-800">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
               <Zap className="w-6 h-6 fill-current" />
             </div>
             <span className="text-2xl font-extrabold tracking-tight">SmartNutrio <span className="text-primary">AI</span></span>
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
-            <Avatar className="h-10 w-10 border-2 border-primary/20">
-              <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} />
-              <AvatarFallback>{user?.displayName?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
+            <Link href="/profile">
+              <Avatar className="h-10 w-10 border-2 border-primary/20 hover:scale-105 transition-transform">
+                <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} />
+                <AvatarFallback>{user?.displayName?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+            </Link>
           </div>
         </div>
       </nav>
@@ -111,7 +112,10 @@ export default function MealAnalysisPage() {
                 <h1 className="text-3xl font-extrabold text-slate-900 mt-1">{mealData.food_name}</h1>
                 <p className="text-slate-500 mt-2 text-sm leading-relaxed">{mealData.description}</p>
               </div>
-              <div className="flex items-baseline gap-2 mb-8"><span className="text-5xl font-black">{mealData.calories}</span><span className="text-xl font-bold text-slate-400">kcal</span></div>
+              <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-5xl font-black">{mealData.calories}</span>
+                <span className="text-xl font-bold text-slate-400">kcal</span>
+              </div>
               
               <div className="space-y-3">
                 <Button 
@@ -129,4 +133,3 @@ export default function MealAnalysisPage() {
     </div>
   );
 }
-import { Loader2 } from 'lucide-react';

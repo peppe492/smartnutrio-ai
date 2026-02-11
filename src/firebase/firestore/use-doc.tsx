@@ -17,10 +17,8 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
 
   useEffect(() => {
     if (!docRef) {
-      // Manteniamo loading: true finché non abbiamo un riferimento valido
-      // per evitare che i consumatori (es. Dashboard) pensino che il dato sia null (non esistente)
-      // prima ancora di aver iniziato a cercarlo.
-      setLoading(true);
+      // Se non c'è un riferimento, il caricamento è tecnicamente finito (senza dati)
+      setLoading(false);
       setData(null);
       return;
     }
