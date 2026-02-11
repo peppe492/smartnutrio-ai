@@ -5,7 +5,7 @@ import { useAuth, useFirestore, useDoc, useAuthInstance } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
   User, Mail, Target, Award, LogOut, ChevronRight, 
-  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2, Menu, Edit2, Sparkles, TrendingUp, Droplets
+  Settings, Shield, Bell, Zap, Camera, LayoutGrid, History, Utensils, Loader2, Menu, Edit2, Sparkles, TrendingUp, Droplets, Calendar as CalendarIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +22,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useMemo } from 'react';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
+import { format, differenceInDays, isAfter, isBefore, startOfDay } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 export default function ProfilePage() {
   const pathname = usePathname();
@@ -50,7 +52,9 @@ export default function ProfilePage() {
     height: 0,
     age: 0,
     gender: 'male' as 'male' | 'female',
-    activityLevel: 1.55
+    activityLevel: 1.55,
+    dietStartDate: '',
+    dietEndDate: ''
   });
 
   useEffect(() => {
@@ -60,7 +64,9 @@ export default function ProfilePage() {
         height: userProfile.height || 175,
         age: userProfile.age || 25,
         gender: userProfile.gender || 'male',
-        activityLevel: userProfile.activityLevel || 1.55
+        activityLevel: userProfile.activityLevel || 1.55,
+        dietStartDate: userProfile.dietStartDate || '',
+        dietEndDate: userProfile.dietEndDate || ''
       });
     }
   }, [userProfile]);
@@ -116,6 +122,35 @@ export default function ProfilePage() {
       toast({ variant: "destructive", title: "Errore", description: "Impossibile disconnettersi." });
     }
   };
+
+  const dietProgress = useMemo(() => {
+    if (!userProfile?.dietStartDate || !userProfile?.dietEndDate) return null;
+    
+    const start = new Date(userProfile.dietStartDate);
+    const end = new Date(userProfile.dietEndDate);
+    const today = startOfDay(new Date());
+
+    if (isBefore(today, start)) {
+      return { status: 'future', daysLeft: differenceInDays(start, today), label: 'Inizio in' };
+    }
+    
+    if (isAfter(today, end)) {
+      return { status: 'completed', label: 'Dieta conclusa' };
+    }
+
+    const totalDays = differenceInDays(end, start);
+    const elapsedDays = differenceInDays(today, start);
+    const remainingDays = differenceInDays(end, today);
+    const progressPercent = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+
+    return { 
+      status: 'ongoing', 
+      remainingDays, 
+      progressPercent, 
+      label: 'Giorno', 
+      dayNumber: elapsedDays + 1 
+    };
+  }, [userProfile]);
 
   if (!mounted || authLoading || (user && profileLoading)) {
     return (
@@ -208,98 +243,168 @@ export default function ProfilePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <Card className="p-8 border-none shadow-xl rounded-[40px] bg-white">
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900">
-                <Target className="text-primary" size={20} /> Piano Nutrizionale
-              </h3>
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center p-6 bg-slate-50 rounded-[28px] gap-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Obiettivo Giornaliero</p>
-                    <p className="text-2xl font-black text-slate-900">{userProfile?.tdeeGoal || '2000'} <span className="text-sm text-slate-400">kcal</span></p>
-                  </div>
-                  <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 w-full sm:w-auto gap-2">
-                        <Edit2 size={14} /> Aggiorna Parametri
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-[32px] p-8 border-none bg-white">
-                      <DialogHeader>
-                        <DialogTitle className="text-2xl font-black text-slate-900">Aggiorna Parametri</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Peso (kg)</Label>
-                            <Input type="number" value={editData.weight} onChange={e => setEditData({ ...editData, weight: Number(e.target.value) })} className="h-12 rounded-xl" />
+            <div className="space-y-8">
+              <Card className="p-8 border-none shadow-xl rounded-[40px] bg-white">
+                <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900">
+                  <Target className="text-primary" size={20} /> Piano Nutrizionale
+                </h3>
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center p-6 bg-slate-50 rounded-[28px] gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Obiettivo Giornaliero</p>
+                      <p className="text-2xl font-black text-slate-900">{userProfile?.tdeeGoal || '2000'} <span className="text-sm text-slate-400">kcal</span></p>
+                    </div>
+                    <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 w-full sm:w-auto gap-2">
+                          <Edit2 size={14} /> Aggiorna Parametri
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="rounded-[32px] p-8 border-none bg-white max-w-md max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl font-black text-slate-900">Aggiorna Parametri</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Peso (kg)</Label>
+                              <Input type="number" value={editData.weight} onChange={e => setEditData({ ...editData, weight: Number(e.target.value) })} className="h-12 rounded-xl" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Altezza (cm)</Label>
+                              <Input type="number" value={editData.height} onChange={e => setEditData({ ...editData, height: Number(e.target.value) })} className="h-12 rounded-xl" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Età</Label>
+                              <Input type="number" value={editData.age} onChange={e => setEditData({ ...editData, age: Number(e.target.value) })} className="h-12 rounded-xl" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Sesso</Label>
+                              <Select value={editData.gender} onValueChange={(v: any) => setEditData({ ...editData, gender: v })}>
+                                <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="male">Uomo</SelectItem>
+                                  <SelectItem value="female">Donna</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Altezza (cm)</Label>
-                            <Input type="number" value={editData.height} onChange={e => setEditData({ ...editData, height: Number(e.target.value) })} className="h-12 rounded-xl" />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Età</Label>
-                            <Input type="number" value={editData.age} onChange={e => setEditData({ ...editData, age: Number(e.target.value) })} className="h-12 rounded-xl" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Sesso</Label>
-                            <Select value={editData.gender} onValueChange={(v: any) => setEditData({ ...editData, gender: v })}>
+                            <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Attività</Label>
+                            <Select value={editData.activityLevel.toString()} onValueChange={(v) => setEditData({ ...editData, activityLevel: Number(v) })}>
                               <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="male">Uomo</SelectItem>
-                                <SelectItem value="female">Donna</SelectItem>
+                                {ACTIVITY_LEVELS.map(l => (
+                                  <SelectItem key={l.value} value={l.value.toString()}>{l.label}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
+                          <div className="pt-4 border-t border-slate-100 space-y-4">
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest">Durata Dieta</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Data Inizio</Label>
+                                <Input 
+                                  type="date" 
+                                  value={editData.dietStartDate} 
+                                  onChange={e => setEditData({ ...editData, dietStartDate: e.target.value })} 
+                                  className="h-12 rounded-xl" 
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Data Fine</Label>
+                                <Input 
+                                  type="date" 
+                                  value={editData.dietEndDate} 
+                                  onChange={e => setEditData({ ...editData, dietEndDate: e.target.value })} 
+                                  className="h-12 rounded-xl" 
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            onClick={handleUpdateParams} 
+                            disabled={isUpdating}
+                            className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20"
+                          >
+                            {isUpdating ? <Loader2 className="animate-spin mr-2" /> : "Salva Tutto"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Proteine</p>
+                      <p className="text-sm font-bold text-slate-900">150g</p>
+                    </div>
+                    <div className="text-center p-3 border-x border-slate-50">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Carboidrati</p>
+                      <p className="text-sm font-bold text-slate-900">300g</p>
+                    </div>
+                    <div className="text-center p-3">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Grassi</p>
+                      <p className="text-sm font-bold text-slate-900">80g</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {dietProgress && (
+                <Card className="p-8 border-none shadow-xl rounded-[40px] bg-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-8 text-primary/10">
+                    <CalendarIcon size={80} />
+                  </div>
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-slate-900 relative">
+                    <CalendarIcon className="text-primary" size={20} /> Stato Dieta
+                  </h3>
+                  
+                  <div className="space-y-6 relative">
+                    {dietProgress.status === 'ongoing' ? (
+                      <>
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{dietProgress.label}</p>
+                            <p className="text-4xl font-black text-slate-900">{dietProgress.dayNumber}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mancano</p>
+                            <p className="text-2xl font-black text-primary">{dietProgress.remainingDays} gg</p>
+                          </div>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Attività</Label>
-                          <Select value={editData.activityLevel.toString()} onValueChange={(v) => setEditData({ ...editData, activityLevel: Number(v) })}>
-                            <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {ACTIVITY_LEVELS.map(l => (
-                                <SelectItem key={l.value} value={l.value.toString()}>{l.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary transition-all duration-1000" 
+                              style={{ width: `${dietProgress.progressPercent}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                            <span>{format(new Date(userProfile.dietStartDate), 'dd MMM', { locale: it })}</span>
+                            <span>{format(new Date(userProfile.dietEndDate), 'dd MMM', { locale: it })}</span>
+                          </div>
                         </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-2xl font-black text-slate-900 mb-2">{dietProgress.label}</p>
+                        {dietProgress.status === 'future' && (
+                          <p className="text-slate-400 font-medium">Inizio previsto tra {dietProgress.daysLeft} giorni.</p>
+                        )}
+                        {dietProgress.status === 'completed' && (
+                          <p className="text-slate-400 font-medium">Hai completato il tuo percorso! Complimenti. ✨</p>
+                        )}
                       </div>
-                      <DialogFooter>
-                        <Button 
-                          onClick={handleUpdateParams} 
-                          disabled={isUpdating}
-                          className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20"
-                        >
-                          {isUpdating ? <Loader2 className="animate-spin mr-2" /> : "Salva e Ricalcola"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Proteine</p>
-                    <p className="text-sm font-bold text-slate-900">150g</p>
+                    )}
                   </div>
-                  <div className="text-center p-3 border-x border-slate-50">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Carboidrati</p>
-                    <p className="text-sm font-bold text-slate-900">300g</p>
-                  </div>
-                  <div className="text-center p-3">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Grassi</p>
-                    <p className="text-sm font-bold text-slate-900">80g</p>
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-slate-50">
-                  <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                    Questi valori sono ricalcolati istantaneamente in base ai tuoi nuovi parametri fisici.
-                  </p>
-                </div>
-              </div>
-            </Card>
+                </Card>
+              )}
+            </div>
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest ml-4 mb-2">Impostazioni</h3>

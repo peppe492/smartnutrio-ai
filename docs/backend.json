@@ -57,12 +57,31 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["amount", "timestamp"]
+    },
+    "UserProfile": {
+      "title": "Profilo Utente",
+      "description": "Dati personali e obiettivi dell'utente",
+      "type": "object",
+      "properties": {
+        "tdeeGoal": { "type": "number" },
+        "weight": { "type": "number" },
+        "height": { "type": "number" },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "activityLevel": { "type": "number" },
+        "dietStartDate": { "type": "string", "format": "date" },
+        "dietEndDate": { "type": "string", "format": "date" }
+      }
     }
   },
   "auth": {
     "providers": ["google.com"]
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "#/backend/entities/UserProfile",
+      "description": "Dati del profilo utente"
+    },
     "/users/{userId}/ingredients/{ingredientId}": {
       "schema": "#/backend/entities/Ingredient",
       "description": "Lista ingredienti consentiti dell'utente"
