@@ -18,6 +18,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function HistoryPage() {
   const pathname = usePathname();
@@ -48,9 +50,17 @@ export default function HistoryPage() {
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   }, [mealsForSelectedDay]);
 
-  const handleDeleteMeal = async (id: string) => {
+  const handleDeleteMeal = (id: string) => {
     if (!user || !db) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+    const docRef = doc(db, 'users', user.uid, 'meals', id);
+    deleteDoc(docRef)
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const handleEditMeal = (meal: any) => {
@@ -58,14 +68,27 @@ export default function HistoryPage() {
     setIsEditModalOpen(true);
   };
 
-  const saveEditedMeal = async () => {
+  const saveEditedMeal = () => {
     if (!editingMeal || !user || !db) return;
-    await updateDoc(doc(db, 'users', user.uid, 'meals', editingMeal.id), {
+    const docRef = doc(db, 'users', user.uid, 'meals', editingMeal.id);
+    const updateData = {
       name: editingMeal.name,
       calories: editingMeal.calories,
       macros: editingMeal.macros
-    });
-    setIsEditModalOpen(false);
+    };
+    
+    updateDoc(docRef, updateData)
+      .then(() => {
+        setIsEditModalOpen(false);
+      })
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   if (!user || !selectedDate) return <div className="p-20 text-center">Caricamento...</div>;

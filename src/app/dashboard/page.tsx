@@ -27,6 +27,8 @@ import Link from 'next/link';
 import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, doc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -162,36 +164,45 @@ export default function Dashboard() {
     }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
   }, [selectedIngredients]);
 
-  const saveManualMeal = async () => {
+  const saveManualMeal = () => {
     if (!user || !db || selectedIngredients.length === 0) return;
     setIsSaving(true);
-    try {
-      const mealName = selectedIngredients.length === 1 
-        ? selectedIngredients[0].name 
-        : `Pasto composto (${selectedIngredients.length} ingredienti)`;
+    
+    const mealName = selectedIngredients.length === 1 
+      ? selectedIngredients[0].name 
+      : `Pasto composto (${selectedIngredients.length} ingredienti)`;
 
-      await addDoc(collection(db, 'users', user.uid, 'meals'), {
-        name: mealName,
-        description: selectedIngredients.map(i => `${i.name} (${i.grams}g)`).join(', '),
-        calories: Math.round(manualMealTotals.calories),
-        macros: {
-          protein: Math.round(manualMealTotals.protein),
-          carbs: Math.round(manualMealTotals.carbs),
-          fat: Math.round(manualMealTotals.fat),
-        },
-        timestamp: mealDate.toISOString(),
-        type: mealType,
-        ingredients: selectedIngredients.map(i => ({ id: i.id, grams: i.grams }))
+    const mealData = {
+      name: mealName,
+      description: selectedIngredients.map(i => `${i.name} (${i.grams}g)`).join(', '),
+      calories: Math.round(manualMealTotals.calories),
+      macros: {
+        protein: Math.round(manualMealTotals.protein),
+        carbs: Math.round(manualMealTotals.carbs),
+        fat: Math.round(manualMealTotals.fat),
+      },
+      timestamp: mealDate.toISOString(),
+      type: mealType,
+      ingredients: selectedIngredients.map(i => ({ id: i.id, grams: i.grams }))
+    };
+
+    const mealsCol = collection(db, 'users', user.uid, 'meals');
+    addDoc(mealsCol, mealData)
+      .then(() => {
+        toast({ title: "Pasto registrato!", description: "Il pasto è stato aggiunto al tuo diario." });
+        setIsAddModalOpen(false);
+        setSelectedIngredients([]);
+        setIsSaving(false);
+      })
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: mealsCol.path,
+          operation: 'create',
+          requestResourceData: mealData,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+        setIsSaving(false);
       });
-
-      toast({ title: "Pasto registrato!", description: "Il pasto è stato aggiunto al tuo diario." });
-      setIsAddModalOpen(false);
-      setSelectedIngredients([]);
-    } catch (e) {
-      toast({ variant: "destructive", title: "Errore", description: "Impossibile salvare il pasto." });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   if (!mounted || authLoading || (user && profileLoading)) {

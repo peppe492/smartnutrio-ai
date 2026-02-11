@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface Ingredient {
   id: string;
@@ -123,18 +125,24 @@ export default function PantryPage() {
 
   function onScanFailure() {}
 
-  const handleAddIngredient = async () => {
+  const handleAddIngredient = () => {
     if (!user || !db || !newIngredient.name) return;
     
-    try {
-      const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
-      await addDoc(ingredientsCol, newIngredient);
-      setIsAddModalOpen(false);
-      setNewIngredient({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
-      toast({ title: "Aggiunto!", description: `${newIngredient.name} è ora nella tua dispensa.` });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Errore", description: "Impossibile salvare l'ingrediente." });
-    }
+    const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
+    addDoc(ingredientsCol, newIngredient)
+      .then(() => {
+        setIsAddModalOpen(false);
+        setNewIngredient({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
+        toast({ title: "Aggiunto!", description: `${newIngredient.name} è ora nella tua dispensa.` });
+      })
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: ingredientsCol.path,
+          operation: 'create',
+          requestResourceData: newIngredient,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const handleOpenEdit = (ing: Ingredient) => {
@@ -142,33 +150,47 @@ export default function PantryPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateIngredient = async () => {
+  const handleUpdateIngredient = () => {
     if (!user || !db || !editingIngredient) return;
-    try {
-      const ingRef = doc(db, 'users', user.uid, 'ingredients', editingIngredient.id);
-      await updateDoc(ingRef, {
-        name: editingIngredient.name,
-        calories: editingIngredient.calories,
-        protein: editingIngredient.protein,
-        carbs: editingIngredient.carbs,
-        fat: editingIngredient.fat,
+    const ingRef = doc(db, 'users', user.uid, 'ingredients', editingIngredient.id);
+    const updateData = {
+      name: editingIngredient.name,
+      calories: editingIngredient.calories,
+      protein: editingIngredient.protein,
+      carbs: editingIngredient.carbs,
+      fat: editingIngredient.fat,
+    };
+
+    updateDoc(ingRef, updateData)
+      .then(() => {
+        setIsEditModalOpen(false);
+        setEditingIngredient(null);
+        toast({ title: "Aggiornato!", description: `${editingIngredient.name} è stato modificato.` });
+      })
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: ingRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
       });
-      setIsEditModalOpen(false);
-      setEditingIngredient(null);
-      toast({ title: "Aggiornato!", description: `${editingIngredient.name} è stato modificato.` });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Errore", description: "Impossibile aggiornare l'ingrediente." });
-    }
   };
 
-  const handleDeleteIngredient = async (id: string) => {
+  const handleDeleteIngredient = (id: string) => {
     if (!user || !db) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'ingredients', id));
-      toast({ title: "Rimosso", description: "L'ingrediente è stato eliminato dalla dispensa." });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Errore", description: "Impossibile eliminare l'ingrediente." });
-    }
+    const ingRef = doc(db, 'users', user.uid, 'ingredients', id);
+    deleteDoc(ingRef)
+      .then(() => {
+        toast({ title: "Rimosso", description: "L'ingrediente è stato eliminato dalla dispensa." });
+      })
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: ingRef.path,
+          operation: 'delete',
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]"><Loader2 className="animate-spin text-primary" /></div>;
