@@ -1,15 +1,17 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Zap, LayoutGrid, History, User, Utensils, 
-  Plus, Trash2, ScanBarcode, X, Loader2, Sparkles, Search
+  Plus, Trash2, ScanBarcode, X, Loader2, Sparkles, Search, Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -144,6 +146,15 @@ export default function PantryPage() {
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]"><Loader2 className="animate-spin text-primary" /></div>;
 
+  const navLinks = (
+    <nav className="flex-1 space-y-2">
+      <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
+      <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
+      <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
+      <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
+    </nav>
+  );
+
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
@@ -153,135 +164,158 @@ export default function PantryPage() {
           </div>
           <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio<span className="text-primary">.</span></span>
         </div>
-        <nav className="flex-1 space-y-2">
-          <SidebarLink href="/dashboard" icon={<LayoutGrid size={20} />} label="Dashboard" active={pathname === '/dashboard'} />
-          <SidebarLink href="/pantry" icon={<Utensils size={20} />} label="Dispensa" active={pathname === '/pantry'} />
-          <SidebarLink href="/history" icon={<History size={20} />} label="Cronologia" active={pathname === '/history'} />
-          <SidebarLink href="/profile" icon={<User size={20} />} label="Profilo" active={pathname === '/profile'} />
-        </nav>
+        {navLinks}
       </aside>
 
-      <main className="flex-1 lg:ml-64 p-6 lg:p-10">
-        <header className="flex items-center justify-between mb-10">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dispensa Smart 🧺</h1>
-            <p className="text-slate-400 font-medium text-sm">Gestisci i tuoi ingredienti base e scansione nuovi prodotti.</p>
+      <main className="flex-1 lg:ml-64 w-full">
+        {/* Mobile Header */}
+        <header className="lg:hidden h-16 bg-white border-b px-4 flex items-center justify-between sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
+              <Zap className="w-5 h-5 fill-current" />
+            </div>
+            <span className="font-bold text-lg tracking-tight text-slate-900">SmartNutrio</span>
           </div>
-          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-12 px-6 shadow-lg shadow-primary/20 gap-2">
-                <Plus size={20} /> AGGIUNGI
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-xl">
+                <Menu size={24} />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md rounded-[32px] p-8 border-none bg-white">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black text-slate-900">Nuovo Ingrediente</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6 mt-4">
-                <div className="flex justify-center">
-                  <Dialog open={isScanning} onOpenChange={setIsScanning}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full h-14 rounded-2xl border-dashed border-2 gap-2 text-primary font-bold hover:bg-primary/5 transition-all">
-                        <ScanBarcode size={24} /> Scansiona Barcode
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden border-none">
-                      <div id="pantry-reader" className="w-full" />
-                      <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10" onClick={() => setIsScanning(false)}><X /></Button>
-                    </DialogContent>
-                  </Dialog>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-6">
+              <div className="flex items-center gap-3 mb-12">
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+                  <Zap className="w-6 h-6 fill-current" />
                 </div>
-
-                {isFetching && <div className="text-center text-primary font-bold animate-pulse flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> Ricerca prodotto...</div>}
-
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Nome Alimento</Label>
-                    <Input placeholder="Es: Pasta Barilla" className="h-12 rounded-xl" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">kcal / 100g</Label>
-                      <Input type="number" className="h-12 rounded-xl" value={newIngredient.calories} onChange={e => setNewIngredient({...newIngredient, calories: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Proteine (g)</Label>
-                      <Input type="number" className="h-12 rounded-xl" value={newIngredient.protein} onChange={e => setNewIngredient({...newIngredient, protein: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Carboidrati (g)</Label>
-                      <Input type="number" className="h-12 rounded-xl" value={newIngredient.carbs} onChange={e => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Grassi (g)</Label>
-                      <Input type="number" className="h-12 rounded-xl" value={newIngredient.fat} onChange={e => setNewIngredient({...newIngredient, fat: Number(e.target.value)})} />
-                    </div>
-                  </div>
-                </div>
-                <Button onClick={handleAddIngredient} className="w-full h-14 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-colors">
-                  Salva nella Dispensa
-                </Button>
+                <span className="font-bold text-xl tracking-tight text-slate-900">SmartNutrio</span>
               </div>
-            </DialogContent>
-          </Dialog>
+              {navLinks}
+            </SheetContent>
+          </Sheet>
         </header>
 
-        <div className="mb-8 relative max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-          <Input 
-            placeholder="Cerca ingredienti..." 
-            className="pl-12 h-14 rounded-2xl border-none shadow-sm bg-white font-medium text-slate-600"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredIngredients.map((ing) => (
-            <Card key={ing.id} className="border-none rounded-[28px] bg-white nutrio-shadow p-6 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-primary">
-                  <Utensils size={24} />
-                </div>
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" onClick={() => handleDeleteIngredient(ing.id)}>
-                  <Trash2 size={18} />
+        <div className="p-6 lg:p-10 max-w-7xl mx-auto">
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Dispensa Smart 🧺</h1>
+              <p className="text-slate-400 font-medium text-sm">Gestisci i tuoi ingredienti base e scansione nuovi prodotti.</p>
+            </div>
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold h-12 px-6 shadow-lg shadow-primary/20 gap-2 w-full sm:w-auto">
+                  <Plus size={20} /> AGGIUNGI
                 </Button>
-              </div>
-              <div className="mb-6">
-                <h3 className="font-bold text-slate-900 text-lg leading-tight mb-1">{ing.name}</h3>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{ing.calories} kcal <span className="text-[10px]">/ 100g</span></span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
-                <div className="text-center">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Pro</p>
-                  <p className="text-xs font-bold text-slate-900">{ing.protein}g</p>
-                </div>
-                <div className="text-center border-x border-slate-50">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Car</p>
-                  <p className="text-xs font-bold text-slate-900">{ing.carbs}g</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Fat</p>
-                  <p className="text-xs font-bold text-slate-900">{ing.fat}g</p>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md rounded-[32px] p-8 border-none bg-white">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black text-slate-900">Nuovo Ingrediente</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6 mt-4">
+                  <div className="flex justify-center">
+                    <Dialog open={isScanning} onOpenChange={setIsScanning}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full h-14 rounded-2xl border-dashed border-2 gap-2 text-primary font-bold hover:bg-primary/5 transition-all">
+                          <ScanBarcode size={24} /> Scansiona Barcode
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden border-none">
+                        <div id="pantry-reader" className="w-full" />
+                        <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10" onClick={() => setIsScanning(false)}><X /></Button>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
 
-          {!ingredientsLoading && filteredIngredients.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-white/50 border-2 border-dashed rounded-[32px]">
-              <div className="mb-4 flex justify-center"><Sparkles size={48} className="text-slate-200" /></div>
-              <p className="text-slate-400 font-bold text-lg">Nessun ingrediente trovato</p>
-              <p className="text-slate-300 text-sm">Aggiungi nuovi alimenti per vederli qui.</p>
-            </div>
-          )}
+                  {isFetching && <div className="text-center text-primary font-bold animate-pulse flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> Ricerca prodotto...</div>}
 
-          {ingredientsLoading && (
-            <div className="col-span-full py-20 flex flex-col items-center gap-4">
-              <Loader2 className="w-10 h-10 animate-spin text-primary/40" />
-              <p className="text-slate-300 font-medium">Caricamento dispensa...</p>
-            </div>
-          )}
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Nome Alimento</Label>
+                      <Input placeholder="Es: Pasta Barilla" className="h-12 rounded-xl" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">kcal / 100g</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={newIngredient.calories} onChange={e => setNewIngredient({...newIngredient, calories: Number(e.target.value)})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Proteine (g)</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={newIngredient.protein} onChange={e => setNewIngredient({...newIngredient, protein: Number(e.target.value)})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Carboidrati (g)</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={newIngredient.carbs} onChange={e => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Grassi (g)</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={newIngredient.fat} onChange={e => setNewIngredient({...newIngredient, fat: Number(e.target.value)})} />
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleAddIngredient} className="w-full h-14 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-colors">
+                    Salva nella Dispensa
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </header>
+
+          <div className="mb-8 relative max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+            <Input 
+              placeholder="Cerca ingredienti..." 
+              className="pl-12 h-14 rounded-2xl border-none shadow-sm bg-white font-medium text-slate-600"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredIngredients.map((ing) => (
+              <Card key={ing.id} className="border-none rounded-[28px] bg-white nutrio-shadow p-6 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-300">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-primary">
+                    <Utensils size={24} />
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" onClick={() => handleDeleteIngredient(ing.id)}>
+                    <Trash2 size={18} />
+                  </Button>
+                </div>
+                <div className="mb-6">
+                  <h3 className="font-bold text-slate-900 text-lg leading-tight mb-1">{ing.name}</h3>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{ing.calories} kcal <span className="text-[10px]">/ 100g</span></span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Pro</p>
+                    <p className="text-xs font-bold text-slate-900">{ing.protein}g</p>
+                  </div>
+                  <div className="text-center border-x border-slate-50">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Car</p>
+                    <p className="text-xs font-bold text-slate-900">{ing.carbs}g</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">Fat</p>
+                    <p className="text-xs font-bold text-slate-900">{ing.fat}g</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+
+            {!ingredientsLoading && filteredIngredients.length === 0 && (
+              <div className="col-span-full py-20 text-center bg-white/50 border-2 border-dashed rounded-[32px]">
+                <div className="mb-4 flex justify-center"><Sparkles size={48} className="text-slate-200" /></div>
+                <p className="text-slate-400 font-bold text-lg">Nessun ingrediente trovato</p>
+                <p className="text-slate-300 text-sm">Aggiungi nuovi alimenti per vederli qui.</p>
+              </div>
+            )}
+
+            {ingredientsLoading && (
+              <div className="col-span-full py-20 flex flex-col items-center gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-primary/40" />
+                <p className="text-slate-300 font-medium">Caricamento dispensa...</p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>
