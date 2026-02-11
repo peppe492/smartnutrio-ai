@@ -20,6 +20,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { manualEntryAiAssistance } from '@/ai/flows/manual-entry-ai-assistance';
 
 interface Ingredient {
   id: string;
@@ -41,6 +42,7 @@ export default function PantryPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const scannerRef = useRef<any>(null);
 
   const [newIngredient, setNewIngredient] = useState({
@@ -206,6 +208,31 @@ export default function PantryPage() {
       });
   };
 
+  const handleAiAssistant = async () => {
+    if (!newIngredient.name) {
+      toast({ title: "Attenzione", description: "Inserisci il nome di un alimento per l'assistenza IA." });
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const result = await manualEntryAiAssistance({ foodEntry: newIngredient.name });
+      setNewIngredient({
+        name: result.food_name,
+        calories: Math.round(result.calories),
+        protein: result.macros.protein_g,
+        carbs: result.macros.carbs_g,
+        fat: result.macros.fat_g
+      });
+      toast({ title: "Analisi IA completata!", description: `Identificato: ${result.food_name}` });
+    } catch (error) {
+      console.error("AI Assistant Error:", error);
+      toast({ variant: "destructive", title: "Errore IA", description: "Impossibile analizzare l'alimento. Prova a inserirlo manualmente." });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F7F8FA]"><Loader2 className="animate-spin text-primary" /></div>;
 
   const navLinks = (
@@ -295,12 +322,34 @@ export default function PantryPage() {
                     </Dialog>
                   </div>
 
-                  {isFetching && <div className="text-center text-primary font-bold animate-pulse flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> Ricerca prodotto...</div>}
+                  {(isFetching || isAiLoading) && (
+                    <div className="text-center text-primary font-bold animate-pulse flex items-center justify-center gap-2">
+                      <Loader2 className="animate-spin" size={16} /> 
+                      {isFetching ? "Ricerca prodotto..." : "L'IA sta analizzando..."}
+                    </div>
+                  )}
 
                   <div className="grid gap-4">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Nome Alimento</Label>
-                      <Input placeholder="Es: Pasta Barilla" className="h-12 rounded-xl" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Es: Pasta Barilla" 
+                          className="h-12 rounded-xl flex-1" 
+                          value={newIngredient.name} 
+                          onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} 
+                        />
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={handleAiAssistant} 
+                          disabled={isAiLoading}
+                          className="h-12 w-12 rounded-xl p-0"
+                          title="Usa IA per identificare valori nutrizionali"
+                        >
+                          {isAiLoading ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5 text-primary" />}
+                        </Button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
