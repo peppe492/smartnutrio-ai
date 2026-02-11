@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
-import { ArrowRight, ChevronLeft, Plus, Trash2, Utensils, ScanBarcode, X, Loader2, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Trash2, ScanBarcode, X, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase';
 import { collection, doc, setDoc, addDoc, getDoc } from 'firebase/firestore';
@@ -63,10 +62,9 @@ export default function Onboarding() {
     setMounted(true);
   }, []);
 
-  // Controllo se l'utente ha già un profilo e reindirizzamento
   useEffect(() => {
     async function checkProfile() {
-      if (mounted && user && db) {
+      if (mounted && user && db && !isFinishing) {
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
         if (docSnap.exists()) {
@@ -78,18 +76,16 @@ export default function Onboarding() {
       router.replace('/');
     }
     checkProfile();
-  }, [user, authLoading, db, mounted, router]);
+  }, [user, authLoading, db, mounted, router, isFinishing]);
 
   useEffect(() => {
-    let scannerInstance: any = null;
-    
     if (isScanning && typeof window !== 'undefined') {
       import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
         const timeoutId = setTimeout(() => {
           const readerElement = document.getElementById("reader");
           if (readerElement) {
             try {
-              scannerInstance = new Html5QrcodeScanner(
+              const scannerInstance = new Html5QrcodeScanner(
                 "reader",
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 false
@@ -167,7 +163,6 @@ export default function Onboarding() {
     });
 
     try {
-      // Salvataggio dati profilo
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, { 
         tdeeGoal: tdee,
@@ -177,7 +172,6 @@ export default function Onboarding() {
         email: user.email
       }, { merge: true });
 
-      // Salvataggio ingredienti iniziali nella dispensa
       const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
       for (const ing of ingredients) {
         await addDoc(ingredientsCol, ing);
@@ -188,8 +182,7 @@ export default function Onboarding() {
         description: `Il tuo obiettivo calorico è ${tdee} kcal.`
       });
       
-      // Reindirizzamento immediato alla dashboard (Home)
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Errore salvataggio" });
@@ -198,9 +191,9 @@ export default function Onboarding() {
   };
 
   if (!mounted || authLoading) return (
-    <div className="min-h-screen bg-nutrio-bg flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[#F7F8FA] flex flex-col items-center justify-center">
       <Loader2 className="w-10 h-10 text-primary animate-spin" />
-      <p className="mt-4 text-slate-400 font-medium">Caricamento profilo...</p>
+      <p className="mt-4 text-slate-400 font-medium">Caricamento...</p>
     </div>
   );
 
@@ -295,7 +288,7 @@ export default function Onboarding() {
                         <ScanBarcode size={18} className="mr-2" /> Scanner Barcode
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden">
+                    <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden border-none">
                       <div id="reader" className="w-full" />
                       <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10" onClick={() => setIsScanning(false)}><X /></Button>
                     </DialogContent>
@@ -315,7 +308,7 @@ export default function Onboarding() {
               </div>
               <div className="max-h-48 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
                 {ingredients.map((ing, i) => (
-                  <div key={i} className="flex justify-between items-center p-4 border border-slate-100 rounded-2xl bg-white shadow-sm animate-in fade-in slide-in-from-bottom-1">
+                  <div key={i} className="flex justify-between items-center p-4 border border-slate-100 rounded-2xl bg-white shadow-sm">
                     <div>
                       <p className="text-sm font-bold text-slate-900">{ing.name}</p>
                       <p className="text-[10px] text-slate-400 font-bold uppercase">{ing.calories} kcal/100g · P:{ing.protein}g C:{ing.carbs}g G:{ing.fat}g</p>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -12,22 +11,18 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { analyzeFoodImage } from '@/ai/flows/analyze-food-image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { collection, doc } from 'firebase/firestore';
 
 interface Meal {
   id: string;
@@ -50,23 +45,15 @@ export default function Dashboard() {
   const db = useFirestore();
   
   const [date, setDate] = useState<Date | null>(null);
-  const [selectedIngredients, setSelectedIngredients] = useState<any[]>([]);
   const [mealType, setMealType] = useState('pranzo');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setDate(new Date());
   }, []);
-
-  const ingredientsQuery = useMemo(() => {
-    if (!user || !db) return null;
-    return collection(db, 'users', user.uid, 'ingredients');
-  }, [db, user]);
 
   const mealsQuery = useMemo(() => {
     if (!user || !db) return null;
@@ -78,7 +65,6 @@ export default function Dashboard() {
     return doc(db, 'users', user.uid);
   }, [db, user]);
 
-  const { data: allowedIngredients = [] } = useCollection(ingredientsQuery);
   const { data: allMeals = [] } = useCollection(mealsQuery);
   const { data: userProfile, loading: profileLoading } = useDoc(userProfileRef);
 
@@ -87,7 +73,7 @@ export default function Dashboard() {
       if (!user) {
         router.replace('/');
       } else if (!profileLoading && userProfile === null) {
-        // Se il profilo non esiste, vai all'onboarding
+        // Solo se il caricamento è finito e il profilo NON esiste, andiamo all'onboarding
         router.push('/onboarding');
       }
     }
@@ -122,28 +108,6 @@ export default function Dashboard() {
     { name: 'Rimanenti', value: caloriesLeft }
   ];
 
-  const handleBuildMeal = () => {
-    if (selectedIngredients.length === 0) return;
-    
-    const mealName = selectedIngredients.map(i => i.name).join(' & ');
-    const totalCalories = Math.round(selectedIngredients.reduce((acc, i) => acc + (i.calories * i.amount / 100), 0));
-    const totalProtein = Math.round(selectedIngredients.reduce((acc, i) => acc + (i.protein * i.amount / 100), 0));
-    const totalCarbs = Math.round(selectedIngredients.reduce((acc, i) => acc + (i.carbs * i.amount / 100), 0));
-    const totalFat = Math.round(selectedIngredients.reduce((acc, i) => acc + (i.fat * i.amount / 100), 0));
-
-    const analysisResult = {
-      food_name: mealName,
-      description: `Composto da: ${selectedIngredients.map(i => `${i.amount}g ${i.name}`).join(', ')}`,
-      calories: totalCalories,
-      macros: { protein_g: totalProtein, carbs_g: totalCarbs, fat_g: totalFat },
-      type: mealType,
-      image: `https://picsum.photos/seed/${Math.random()}/800/600`
-    };
-
-    sessionStorage.setItem('last_meal_analysis', JSON.stringify(analysisResult));
-    router.push('/analysis');
-  };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -165,11 +129,11 @@ export default function Dashboard() {
     reader.readAsDataURL(file);
   };
 
-  if (!mounted || authLoading || !user) {
+  if (!mounted || authLoading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FA]">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-        <p className="text-slate-400 font-medium">Caricamento dashboard...</p>
+        <p className="text-slate-400 font-medium">Caricamento dati...</p>
       </div>
     );
   }
@@ -196,10 +160,10 @@ export default function Dashboard() {
         </nav>
       </aside>
 
-      <main className="flex-1 lg:ml-64 lg:mr-80 p-6 lg:p-10">
+      <main className="flex-1 lg:ml-64 p-6 lg:p-10">
         <header className="flex items-center justify-between mb-10">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Buongiorno, {user.displayName?.split(' ')[0]} 👋</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Buongiorno, {user?.displayName?.split(' ')[0]} 👋</h1>
             <p className="text-slate-400 font-medium text-sm">{date ? format(date, 'EEEE, d MMMM', { locale: it }) : 'Caricamento...'}</p>
           </div>
           <div className="flex items-center gap-4">
@@ -286,9 +250,8 @@ export default function Dashboard() {
                         <Input id="image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isAnalyzing} />
                       </Label>
                     </TabsContent>
-                    <TabsContent value="manual" className="m-0">
-                       <p className="text-center text-slate-400">Scegli dalla tua dispensa...</p>
-                       {/* Qui andrebbe la logica della dispensa */}
+                    <TabsContent value="manual" className="m-0 text-center py-10">
+                       <p className="text-slate-400 font-medium">Funzionalità in arrivo...</p>
                     </TabsContent>
                   </div>
                 </Tabs>

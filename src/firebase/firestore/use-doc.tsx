@@ -7,6 +7,8 @@ import {
   DocumentSnapshot, 
   DocumentData 
 } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -15,7 +17,10 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
 
   useEffect(() => {
     if (!docRef) {
-      setLoading(false);
+      // Manteniamo loading: true finché non abbiamo un riferimento valido
+      // per evitare che i consumatori (es. Dashboard) pensino che il dato sia null (non esistente)
+      // prima ancora di aver iniziato a cercarlo.
+      setLoading(true);
       setData(null);
       return;
     }
@@ -30,10 +35,16 @@ export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
           setData(null);
         }
         setLoading(false);
+        setError(null);
       },
-      (err) => {
-        console.error("Firestore Error:", err);
-        setError(err);
+      async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'get',
+        } satisfies SecurityRuleContext);
+
+        errorEmitter.emit('permission-error', permissionError);
+        setError(serverError);
         setLoading(false);
       }
     );
