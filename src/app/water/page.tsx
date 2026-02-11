@@ -123,6 +123,7 @@ export default function WaterPage() {
       </aside>
 
       <main className="flex-1 lg:ml-64 w-full">
+        {/* Mobile Header */}
         <header className="lg:hidden h-16 bg-white border-b px-4 flex items-center justify-between sticky top-0 z-50">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -18,7 +19,6 @@ export default function Home() {
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
 
   useEffect(() => {
-    // Pulisce la cache locale all'avvio per evitare conflitti di sessione
     if (typeof window !== 'undefined') {
       sessionStorage.clear();
       localStorage.removeItem('onboarding_draft');
@@ -65,7 +65,9 @@ export default function Home() {
         setUnauthorizedDomain(currentDomain);
         message = `Dominio non autorizzato: ${currentDomain}. Aggiungilo nella console Firebase.`;
       } else if (error.code === 'auth/popup-blocked') {
-        message = "Il popup è stato bloccato dal browser. Abilitalo per continuare.";
+        message = "Il popup è stato bloccato dal browser. Abilitalo nelle impostazioni o prova a ricaricare la pagina.";
+      } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        message = "Accesso annullato o finestra chiusa prematuramente.";
       }
 
       toast({
