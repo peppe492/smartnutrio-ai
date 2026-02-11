@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Zap, LayoutGrid, History, User, Utensils, 
-  Plus, Trash2, ScanBarcode, X, Loader2, Sparkles, Search, Menu
+  Plus, Trash2, ScanBarcode, X, Loader2, Sparkles, Search, Menu, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth, useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -36,6 +36,7 @@ export default function PantryPage() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const scannerRef = useRef<any>(null);
@@ -47,6 +48,8 @@ export default function PantryPage() {
     carbs: 0,
     fat: 0
   });
+
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
 
   const ingredientsQuery = useMemo(() => {
     if (!user || !db) return null;
@@ -131,6 +134,30 @@ export default function PantryPage() {
       toast({ title: "Aggiunto!", description: `${newIngredient.name} è ora nella tua dispensa.` });
     } catch (e) {
       toast({ variant: "destructive", title: "Errore", description: "Impossibile salvare l'ingrediente." });
+    }
+  };
+
+  const handleOpenEdit = (ing: Ingredient) => {
+    setEditingIngredient(ing);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateIngredient = async () => {
+    if (!user || !db || !editingIngredient) return;
+    try {
+      const ingRef = doc(db, 'users', user.uid, 'ingredients', editingIngredient.id);
+      await updateDoc(ingRef, {
+        name: editingIngredient.name,
+        calories: editingIngredient.calories,
+        protein: editingIngredient.protein,
+        carbs: editingIngredient.carbs,
+        fat: editingIngredient.fat,
+      });
+      setIsEditModalOpen(false);
+      setEditingIngredient(null);
+      toast({ title: "Aggiornato!", description: `${editingIngredient.name} è stato modificato.` });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Errore", description: "Impossibile aggiornare l'ingrediente." });
     }
   };
 
@@ -276,9 +303,14 @@ export default function PantryPage() {
                   <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-primary">
                     <Utensils size={24} />
                   </div>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" onClick={() => handleDeleteIngredient(ing.id)}>
-                    <Trash2 size={18} />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-primary hover:bg-primary/5 rounded-full transition-colors" onClick={() => handleOpenEdit(ing)}>
+                      <Pencil size={18} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" onClick={() => handleDeleteIngredient(ing.id)}>
+                      <Trash2 size={18} />
+                    </Button>
+                  </div>
                 </div>
                 <div className="mb-6">
                   <h3 className="font-bold text-slate-900 text-lg leading-tight mb-1">{ing.name}</h3>
@@ -316,6 +348,46 @@ export default function PantryPage() {
               </div>
             )}
           </div>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+            <DialogContent className="sm:max-w-md rounded-[32px] p-8 border-none bg-white">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-slate-900">Modifica Ingrediente</DialogTitle>
+              </DialogHeader>
+              {editingIngredient && (
+                <div className="space-y-6 mt-4">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Nome Alimento</Label>
+                      <Input placeholder="Es: Pasta Barilla" className="h-12 rounded-xl" value={editingIngredient.name} onChange={e => setEditingIngredient({...editingIngredient, name: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">kcal / 100g</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={editingIngredient.calories} onChange={e => setEditingIngredient({...editingIngredient, calories: Number(e.target.value)})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Proteine (g)</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={editingIngredient.protein} onChange={e => setEditingIngredient({...editingIngredient, protein: Number(e.target.value)})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Carboidrati (g)</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={editingIngredient.carbs} onChange={e => setEditingIngredient({...editingIngredient, carbs: Number(e.target.value)})} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Grassi (g)</Label>
+                        <Input type="number" className="h-12 rounded-xl" value={editingIngredient.fat} onChange={e => setEditingIngredient({...editingIngredient, fat: Number(e.target.value)})} />
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleUpdateIngredient} className="w-full h-14 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-colors">
+                    Salva Modifiche
+                  </Button>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>
