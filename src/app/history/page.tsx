@@ -218,7 +218,7 @@ export default function HistoryPage() {
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <Card className="xl:col-span-1 bg-white p-8 rounded-[40px] border-none shadow-xl flex flex-col items-center">
+            <Card className="xl:col-span-1 bg-white p-8 rounded-[40px] border-none shadow-xl flex flex-col">
               <div className="w-full flex items-center justify-between mb-8">
                 <div className="flex items-center gap-1.5 cursor-pointer">
                   <span className="text-lg font-bold text-slate-900 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: it })}</span>
@@ -243,18 +243,17 @@ export default function HistoryPage() {
                   month: "w-full space-y-6",
                   caption: "hidden",
                   table: "w-full border-collapse",
-                  head_row: "flex justify-between mb-4",
-                  head_cell: "text-slate-300 font-bold text-[10px] uppercase w-10 text-center tracking-widest",
-                  row: "flex justify-between w-full mt-4",
+                  head_row: "grid grid-cols-7 mb-4",
+                  head_cell: "text-slate-300 font-bold text-[10px] uppercase text-center tracking-widest",
+                  row: "grid grid-cols-7 w-full mt-2",
                   cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                  day: "h-10 w-10 p-0 font-bold transition-all rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-50",
-                  day_selected: "hidden", // We use a custom Day component to handle selection visuals
+                  day: "h-11 w-11 p-0 font-bold transition-all rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-50 mx-auto",
+                  day_selected: "hidden", 
                   day_today: "text-primary",
                   day_outside: "text-slate-200 opacity-20",
                 }}
                 components={{
-                  Day: (props: any) => {
-                    const { day } = props;
+                  Day: ({ day }: any) => {
                     const date = day.date;
                     if (!date || !isValid(date)) return null;
 
@@ -267,13 +266,13 @@ export default function HistoryPage() {
                       <div 
                         onClick={() => setSelectedDate(date)}
                         className={cn(
-                          "relative flex flex-col items-center justify-center cursor-pointer group h-14 w-10",
+                          "relative flex flex-col items-center justify-center cursor-pointer group h-16 w-full",
                           isOutside && "opacity-20"
                         )}
                       >
                         <div className={cn(
                           "h-11 w-11 flex flex-col items-center justify-center rounded-full font-bold transition-all relative",
-                          isSelected ? "bg-[#4ADE80] text-white scale-125 shadow-lg shadow-[#4ADE80]/20 z-10" : "text-slate-600 hover:bg-slate-50"
+                          isSelected ? "bg-primary text-white scale-110 shadow-lg shadow-primary/20 z-10" : "text-slate-600 hover:bg-slate-50"
                         )}>
                           {format(date, 'd')}
                           {isSelected && (
@@ -282,7 +281,7 @@ export default function HistoryPage() {
                         </div>
                         {!isSelected && status && (
                           <div className={cn(
-                            "absolute bottom-0 w-1 h-1 rounded-full",
+                            "absolute bottom-1 w-1 h-1 rounded-full",
                             status === 'met' ? "bg-emerald-400" : "bg-orange-400"
                           )} />
                         )}
@@ -349,7 +348,6 @@ export default function HistoryPage() {
                           ) : (
                             getMealIcon(meal.type)
                           )}
-                          <div className="absolute top-0 left-0 w-full h-full bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h5 className="font-bold text-slate-900 truncate text-sm">{meal.name}</h5>
@@ -379,7 +377,6 @@ export default function HistoryPage() {
                            <History className="text-slate-200" size={24} />
                         </div>
                         <p className="text-slate-400 font-bold text-sm">Nessun pasto registrato</p>
-                        <p className="text-[10px] text-slate-300 font-bold uppercase mt-1">Seleziona un altro giorno o aggiungi un pasto oggi</p>
                       </div>
                     )}
                   </div>
@@ -403,10 +400,6 @@ export default function HistoryPage() {
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Kcal Totali</Label>
                       <Input type="number" value={editingMeal.calories} onChange={e => setEditingMeal({ ...editingMeal, calories: Number(e.target.value) })} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Proteine (g)</Label>
-                      <Input type="number" value={editingMeal.macros.protein} onChange={e => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, protein: Number(e.target.value) } })} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
                     </div>
                   </div>
                 </div>
