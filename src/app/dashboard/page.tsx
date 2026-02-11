@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, differenceInDays, isAfter, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { 
@@ -106,11 +106,38 @@ export default function Dashboard() {
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   }, [meals]);
 
+  // Calcolo progresso dieta
+  const dietProgress = useMemo(() => {
+    if (!userProfile?.dietStartDate || !userProfile?.dietEndDate) return null;
+    const start = new Date(userProfile.dietStartDate);
+    const end = new Date(userProfile.dietEndDate);
+    const today = startOfDay(new Date());
+
+    if (isAfter(today, end)) return { daysRemaining: 0, percent: 100, isFinished: true };
+    
+    const totalDays = differenceInDays(end, start);
+    const elapsedDays = differenceInDays(today, start);
+    const remainingDays = differenceInDays(end, today);
+    const percent = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+
+    return { daysRemaining: remainingDays, percent, isFinished: false };
+  }, [userProfile]);
+
   const caloriesLeft = Math.max(0, dailyGoal - totals.calories);
-  const chartData = [
-    { name: 'Consumate', value: totals.calories },
-    { name: 'Rimanenti', value: caloriesLeft }
-  ];
+  
+  // Dati per il grafico principale (se c'è una dieta, mostriamo i giorni)
+  const mainChartData = useMemo(() => {
+    if (dietProgress) {
+      return [
+        { name: 'Passati', value: 100 - dietProgress.percent },
+        { name: 'Rimanenti', value: dietProgress.percent }
+      ];
+    }
+    return [
+      { name: 'Consumate', value: totals.calories },
+      { name: 'Rimanenti', value: caloriesLeft }
+    ];
+  }, [dietProgress, totals.calories, caloriesLeft]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -293,7 +320,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie 
-                      data={chartData} 
+                      data={mainChartData} 
                       innerRadius="85%" 
                       outerRadius="100%" 
                       startAngle={220} 
@@ -303,14 +330,18 @@ export default function Dashboard() {
                       stroke="none" 
                       cornerRadius={40}
                     >
-                      <Cell fill="#4ADE80" />
+                      <Cell fill={dietProgress ? "#3b82f6" : "#4ADE80"} />
                       <Cell fill="#F1F5F9" />
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center -mt-4">
-                  <span className="text-4xl font-extrabold text-slate-900">{caloriesLeft.toLocaleString()}</span>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Rimanenti</span>
+                  <span className="text-4xl font-extrabold text-slate-900">
+                    {dietProgress ? dietProgress.daysRemaining : caloriesLeft.toLocaleString()}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    {dietProgress ? 'Giorni alla fine' : 'Kcal Rimanenti'}
+                  </span>
                 </div>
               </div>
               <div className="flex justify-between w-full mt-4 px-4">
