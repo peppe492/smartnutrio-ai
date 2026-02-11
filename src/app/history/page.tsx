@@ -6,7 +6,7 @@ import { format, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { 
   Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets,
-  Coffee, Sun, Moon, Apple, Clock
+  Coffee, Sun, Moon, Apple, Clock, Calendar as CalendarIcon, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,6 +30,11 @@ export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMeal, setEditingMeal] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const mealsQuery = useMemo(() => user && db ? collection(db, 'users', user.uid, 'meals') : null, [db, user]);
   const { data: allMeals = [] } = useCollection(mealsQuery);
@@ -96,7 +101,11 @@ export default function HistoryPage() {
       });
   };
 
-  if (!user) return <div className="p-20 text-center">Inizializzazione sessione...</div>;
+  if (!mounted || !user) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Zap className="w-8 h-8 text-primary animate-pulse" />
+    </div>
+  );
 
   const navLinks = (
     <nav className="flex-1 space-y-2">
@@ -111,10 +120,10 @@ export default function HistoryPage() {
 
   const getMealIcon = (type: string) => {
     switch (type?.toLowerCase()) {
-      case 'colazione': return <Coffee className="text-orange-600" size={20} />;
-      case 'pranzo': return <Sun className="text-yellow-600" size={20} />;
-      case 'cena': return <Moon className="text-indigo-600" size={20} />;
-      case 'spuntino': return <Apple className="text-red-600" size={20} />;
+      case 'colazione': return <Coffee className="text-orange-500" size={20} />;
+      case 'pranzo': return <Sun className="text-yellow-500" size={20} />;
+      case 'cena': return <Moon className="text-indigo-500" size={20} />;
+      case 'spuntino': return <Apple className="text-red-500" size={20} />;
       default: return <Utensils className="text-slate-500" size={20} />;
     }
   };
@@ -171,98 +180,137 @@ export default function HistoryPage() {
         </header>
 
         <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
-          <header>
-            <h1 className="text-2xl font-bold text-slate-900">Cronologia e Log</h1>
-            <p className="text-slate-400 font-medium text-sm">Monitora i tuoi progressi nel tempo.</p>
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Cronologia Nutrizionale 📅</h1>
+              <p className="text-slate-400 font-medium text-sm">Visualizza e gestisci i tuoi log passati.</p>
+            </div>
+            <div className="hidden sm:block">
+               <div className="px-4 py-2 bg-white rounded-2xl shadow-sm border text-xs font-bold text-slate-500 flex items-center gap-2">
+                 <Clock size={14} className="text-primary" /> Log Aggiornato
+               </div>
+            </div>
           </header>
 
-          <Card className="bg-white p-6 rounded-[32px] border-none shadow-sm flex flex-col items-center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border-none"
-              locale={it}
-            />
-          </Card>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <Card className="xl:col-span-1 bg-white p-6 rounded-[32px] border-none shadow-sm flex flex-col items-center">
+              <div className="mb-4 text-center">
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Seleziona Data</span>
+              </div>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="rounded-md border-none p-0"
+                locale={it}
+              />
+            </Card>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <MacroCard label="Proteine" value={`${Math.round(dailyStats.protein)}g`} progress={Math.min(100, (dailyStats.protein/150)*100)} color="text-primary" bgColor="bg-primary/10" />
-            <MacroCard label="Carboidrati" value={`${Math.round(dailyStats.carbs)}g`} progress={Math.min(100, (dailyStats.carbs/300)*100)} color="text-blue-500" bgColor="bg-blue-50" />
-            <MacroCard label="Grassi" value={`${Math.round(dailyStats.fat)}g`} progress={Math.min(100, (dailyStats.fat/80)*100)} color="text-purple-500" bgColor="bg-purple-50" />
+            <div className="xl:col-span-2 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <MacroCard label="Proteine" value={`${Math.round(dailyStats.protein)}g`} progress={Math.min(100, (dailyStats.protein/150)*100)} color="text-blue-500" bgColor="bg-blue-50" />
+                <MacroCard label="Carboidrati" value={`${Math.round(dailyStats.carbs)}g`} progress={Math.min(100, (dailyStats.carbs/300)*100)} color="text-yellow-600" bgColor="bg-yellow-50" />
+                <MacroCard label="Grassi" value={`${Math.round(dailyStats.fat)}g`} progress={Math.min(100, (dailyStats.fat/80)*100)} color="text-purple-500" bgColor="bg-purple-50" />
+              </div>
+
+              <Card className="bg-white rounded-[32px] border-none shadow-sm overflow-hidden flex flex-col">
+                <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="text-center sm:text-left">
+                    <h3 className="text-xl font-bold text-slate-900">
+                      {selectedDate ? format(selectedDate, 'EEEE, d MMMM', { locale: it }) : 'Seleziona una data'}
+                    </h3>
+                    <p className="text-xs text-slate-400 font-medium mt-1">Riepilogo nutrizionale del giorno</p>
+                  </div>
+                  <div className="flex flex-col items-center sm:items-end">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-black text-slate-900">{Math.round(dailyStats.calories)}</span>
+                      <span className="text-sm font-bold text-slate-400">kcal</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">energia totale</span>
+                  </div>
+                </div>
+
+                <div className="p-8 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <Utensils size={16} className="text-primary" /> Pasti Registrati
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">{mealsForSelectedDay.length} Voci</span>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {mealsForSelectedDay.map((meal: any) => (
+                      <div key={meal.id} className="group flex items-center p-5 rounded-[24px] bg-slate-50/50 hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-slate-100">
+                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mr-5 shadow-sm shrink-0 overflow-hidden relative", getMealBg(meal.type))}>
+                          {meal.image ? (
+                            <img src={meal.image} alt={meal.name} className="w-full h-full object-cover" />
+                          ) : (
+                            getMealIcon(meal.type)
+                          )}
+                          <div className="absolute top-0 left-0 w-full h-full bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-bold text-slate-900 truncate text-sm">{meal.name}</h5>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <div className="flex items-center gap-1">
+                              <div className={cn("w-1.5 h-1.5 rounded-full", meal.type === 'colazione' ? 'bg-orange-400' : meal.type === 'pranzo' ? 'bg-yellow-400' : meal.type === 'cena' ? 'bg-indigo-400' : 'bg-red-400')} />
+                              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{meal.type}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] text-slate-300 font-bold uppercase">
+                              P: {meal.macros?.protein}g · C: {meal.macros?.carbs}g · G: {meal.macros?.fat}g
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="font-black text-lg text-slate-900 leading-none">{meal.calories}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">kcal</p>
+                        </div>
+                        <div className="flex ml-6 gap-2 opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditMeal(meal)} className="h-9 w-9 rounded-xl text-slate-300 hover:text-primary hover:bg-primary/5"><Pencil size={16} /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteMeal(meal.id)} className="h-9 w-9 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50"><Trash2 size={16} /></Button>
+                        </div>
+                      </div>
+                    ))}
+                    {mealsForSelectedDay.length === 0 && (
+                      <div className="text-center py-16 flex flex-col items-center justify-center bg-slate-50/30 rounded-[32px] border-2 border-dashed border-slate-100">
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                           <History className="text-slate-200" size={24} />
+                        </div>
+                        <p className="text-slate-400 font-bold text-sm">Nessun pasto registrato</p>
+                        <p className="text-[10px] text-slate-300 font-bold uppercase mt-1">Seleziona un altro giorno o aggiungi un pasto oggi</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
 
-          <Card className="bg-white rounded-[32px] border-none shadow-sm overflow-hidden flex flex-col">
-            <div className="p-8 border-b border-slate-50 text-center">
-              <h3 className="text-xl font-bold text-slate-900 mb-6">
-                {selectedDate ? format(selectedDate, 'EEEE, d MMMM', { locale: it }) : 'Seleziona una data'}
-              </h3>
-              <div className="flex flex-col items-center">
-                <span className="text-6xl font-black text-slate-900">{Math.round(dailyStats.calories)}</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">kcal totali</span>
-              </div>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <h4 className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Pasti Inseriti</h4>
-              <div className="space-y-4">
-                {mealsForSelectedDay.map((meal: any) => (
-                  <div key={meal.id} className="group flex items-center p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent">
-                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mr-4 shadow-sm shrink-0", getMealBg(meal.type))}>
-                      {meal.image ? (
-                        <img src={meal.image} alt={meal.name} className="w-full h-full object-cover rounded-xl" />
-                      ) : (
-                        getMealIcon(meal.type)
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-bold text-slate-900 truncate text-sm">{meal.name}</h5>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Clock size={10} className="text-slate-300" />
-                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{meal.type}</span>
-                      </div>
-                    </div>
-                    <div className="text-right ml-2">
-                      <p className="font-black text-slate-900">{meal.calories} <span className="text-[10px] font-bold text-slate-300">kcal</span></p>
-                    </div>
-                    <div className="flex ml-4 gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <button onClick={() => handleEditMeal(meal)} className="p-2 text-slate-300 hover:text-primary"><Pencil size={16} /></button>
-                      <button onClick={() => handleDeleteMeal(meal.id)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                ))}
-                {mealsForSelectedDay.length === 0 && (
-                  <div className="text-center text-slate-400 py-12 font-medium bg-slate-50/50 rounded-2xl border-2 border-dashed">
-                    Nessun pasto registrato per questa data
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-
           <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="rounded-[32px] p-8 border-none bg-white">
-              <DialogHeader><DialogTitle className="text-2xl font-black text-slate-900">Modifica Pasto</DialogTitle></DialogHeader>
+            <DialogContent className="rounded-[32px] p-8 border-none bg-white max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-slate-900">Modifica Voce</DialogTitle>
+              </DialogHeader>
               {editingMeal && (
-                <div className="space-y-4 py-4">
+                <div className="space-y-6 py-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Nome</Label>
-                    <Input value={editingMeal.name} onChange={e => setEditingMeal({ ...editingMeal, name: e.target.value })} className="h-12 rounded-xl" />
+                    <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Nome del Pasto</Label>
+                    <Input value={editingMeal.name} onChange={e => setEditingMeal({ ...editingMeal, name: e.target.value })} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">kcal</Label>
-                      <Input type="number" value={editingMeal.calories} onChange={e => setEditingMeal({ ...editingMeal, calories: Number(e.target.value) })} className="h-12 rounded-xl" />
+                      <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Kcal Totali</Label>
+                      <Input type="number" value={editingMeal.calories} onChange={e => setEditingMeal({ ...editingMeal, calories: Number(e.target.value) })} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Proteine (g)</Label>
-                      <Input type="number" value={editingMeal.macros.protein} onChange={e => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, protein: Number(e.target.value) } })} className="h-12 rounded-xl" />
+                      <Input type="number" value={editingMeal.macros.protein} onChange={e => setEditingMeal({ ...editingMeal, macros: { ...editingMeal.macros, protein: Number(e.target.value) } })} className="h-12 rounded-xl bg-slate-50 border-none font-bold" />
                     </div>
                   </div>
                 </div>
               )}
               <DialogFooter>
-                <Button onClick={saveEditedMeal} className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20">Salva Modifiche</Button>
+                <Button onClick={saveEditedMeal} className="w-full h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">Salva Modifiche</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -290,11 +338,18 @@ function SidebarLink({ href, icon, label, active }: { href: string, icon: React.
 
 function MacroCard({ label, value, progress, color, bgColor }: any) {
   return (
-    <Card className="p-6 rounded-[28px] border-none bg-white flex flex-col justify-between shadow-sm">
-      <p className={cn("text-[10px] font-extrabold uppercase tracking-widest mb-3", color)}>{label}</p>
-      <div className="flex items-end justify-between">
+    <Card className="p-5 rounded-[28px] border-none bg-white flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-4">
+        <p className={cn("text-[10px] font-extrabold uppercase tracking-widest", color)}>{label}</p>
+        <div className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold", bgColor, color)}>
+          {Math.round(progress)}%
+        </div>
+      </div>
+      <div className="space-y-3">
         <span className="text-2xl font-black text-slate-900">{value}</span>
-        <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full", bgColor, color)}>{Math.round(progress)}%</span>
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div className={cn("h-full transition-all duration-1000", color.replace('text', 'bg'))} style={{ width: `${progress}%` }} />
+        </div>
       </div>
     </Card>
   );
