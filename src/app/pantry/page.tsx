@@ -146,7 +146,6 @@ export default function PantryPage() {
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
-      {/* Sidebar - Consistent across pages */}
       <aside className="w-64 bg-white border-r hidden lg:flex flex-col py-8 px-6 fixed h-full z-40">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg rotate-3">

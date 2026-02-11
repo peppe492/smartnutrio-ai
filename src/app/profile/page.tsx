@@ -17,8 +17,7 @@ import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
   const pathname = usePathname();
-  const { user, loading: authLoading } = useAuth();
-  const { auth } = useAuth();
+  const { user, loading: authLoading, auth } = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
