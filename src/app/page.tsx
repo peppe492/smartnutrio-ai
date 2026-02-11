@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Smartphone, Loader2, Apple, Zap, Sparkles } from 'lucide-react';
+import { Smartphone, Loader2, Apple, Zap, Sparkles, AlertCircle } from 'lucide-react';
 import { useAuth, useFirebase } from '@/firebase';
 import { signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function Home() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function Home() {
   const { auth } = useFirebase();
   const { toast } = useToast();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -32,6 +34,7 @@ export default function Home() {
     }
     
     setIsLoggingIn(true);
+    setUnauthorizedDomain(null);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -50,7 +53,9 @@ export default function Home() {
       let message = "Impossibile completare il login. Riprova.";
       
       if (error.code === 'auth/unauthorized-domain') {
-        message = "Dominio non autorizzato. Aggiungi questo URL nei 'Authorized domains' della console Firebase.";
+        const currentDomain = window.location.hostname;
+        setUnauthorizedDomain(currentDomain);
+        message = `Dominio non autorizzato: ${currentDomain}. Aggiungilo nella console Firebase.`;
       } else if (error.code === 'auth/popup-blocked') {
         message = "Il popup è stato bloccato dal browser. Abilitalo per continuare.";
       }
@@ -94,6 +99,16 @@ export default function Home() {
         <p className="text-slate-500 text-lg md:text-xl mb-12 max-w-lg font-medium leading-relaxed">
           Traccia la tua nutrizione in pochi secondi con l'intelligenza artificiale. Scatta una foto e noi facciamo il resto.
         </p>
+
+        {unauthorizedDomain && (
+          <Alert variant="destructive" className="mb-8 text-left max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Dominio non autorizzato</AlertTitle>
+            <AlertDescription>
+              Devi aggiungere <strong>{unauthorizedDomain}</strong> ai "Authorized domains" nelle impostazioni di Authentication della Console Firebase.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="space-y-4 w-full max-w-sm">
           <Button 
