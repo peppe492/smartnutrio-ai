@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -10,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { calculateTDEE, ACTIVITY_LEVELS } from '@/lib/tdee';
-import { ArrowRight, ChevronLeft, Plus, Trash2, Utensils, ScanBarcode, X, Loader2 } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Plus, Trash2, Utensils, ScanBarcode, X, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase';
-import { collection, doc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, getDoc } from 'firebase/firestore';
 
 interface Ingredient {
   id?: string;
@@ -27,11 +28,12 @@ interface Ingredient {
 export default function Onboarding() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const db = useFirestore();
   
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(1);
+  const [isFinishing, setIsFinishing] = useState(false);
   const [formData, setFormData] = useState({
     gender: 'male' as 'male' | 'female',
     age: 25,
@@ -60,6 +62,23 @@ export default function Onboarding() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Controllo se l'utente ha già un profilo e reindirizzamento
+  useEffect(() => {
+    async function checkProfile() {
+      if (mounted && user && db) {
+        const userRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(userRef);
+        if (docSnap.exists()) {
+          router.replace('/dashboard');
+        }
+      }
+    }
+    if (!authLoading && !user && mounted) {
+      router.replace('/');
+    }
+    checkProfile();
+  }, [user, authLoading, db, mounted, router]);
 
   useEffect(() => {
     let scannerInstance: any = null;
@@ -141,131 +160,187 @@ export default function Onboarding() {
       return;
     }
 
+    setIsFinishing(true);
     const tdee = calculateTDEE({
       ...formData,
       activityLevel: formData.activityLevel as any
     });
 
     try {
+      // Salvataggio dati profilo
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, { tdeeGoal: tdee }, { merge: true });
+      await setDoc(userRef, { 
+        tdeeGoal: tdee,
+        onboardingCompleted: true,
+        setupDate: new Date().toISOString(),
+        displayName: user.displayName,
+        email: user.email
+      }, { merge: true });
 
+      // Salvataggio ingredienti iniziali nella dispensa
       const ingredientsCol = collection(db, 'users', user.uid, 'ingredients');
       for (const ing of ingredients) {
         await addDoc(ingredientsCol, ing);
       }
 
-      toast({ title: "Configurazione completata!" });
+      toast({ 
+        title: "Configurazione completata!", 
+        description: `Il tuo obiettivo calorico è ${tdee} kcal.`
+      });
+      
+      // Reindirizzamento immediato alla dashboard (Home)
       router.push('/dashboard');
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Errore salvataggio" });
+      setIsFinishing(false);
     }
   };
 
-  if (!mounted) return null;
+  if (!mounted || authLoading) return (
+    <div className="min-h-screen bg-nutrio-bg flex flex-col items-center justify-center">
+      <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      <p className="mt-4 text-slate-400 font-medium">Caricamento profilo...</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-nutrio-bg flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl border-none nutrio-shadow overflow-hidden bg-white">
+    <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center p-4">
+      <Card className="w-full max-w-xl border-none shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
         <div className="h-2 bg-slate-100">
-          <div className="h-full bg-nutrio-mint transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }} />
+          <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${(step / 4) * 100}%` }} />
         </div>
-        <CardHeader className="pt-8 pb-4">
-          <div className="flex items-center gap-4 mb-2">
+        <CardHeader className="pt-10 pb-4 px-8">
+          <div className="flex items-center gap-4 mb-4">
             {step > 1 && (
-              <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8 rounded-full">
-                <ChevronLeft className="w-5 h-5" />
+              <Button variant="ghost" size="icon" onClick={handlePrev} className="h-10 w-10 rounded-full hover:bg-slate-50">
+                <ChevronLeft className="w-6 h-6" />
               </Button>
             )}
-            <CardTitle className="text-2xl font-bold">
-              {step === 1 ? 'Informazioni Personali' : step === 2 ? 'Dati Corporei' : step === 3 ? 'Livello di Attività' : 'Dispensa IA'}
-            </CardTitle>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-1">Step {step} di 4</span>
+              <CardTitle className="text-3xl font-black text-slate-900 leading-tight">
+                {step === 1 ? `Benvenuto, ${user?.displayName?.split(' ')[0] || 'Utente'}!` : 
+                 step === 2 ? 'I tuoi parametri' : 
+                 step === 3 ? 'Stile di vita' : 
+                 'La tua Dispensa Smart'}
+              </CardTitle>
+            </div>
           </div>
-          <CardDescription>
-            {step === 4 ? 'Aggiungi i tuoi ingredienti preferiti. Li userai per comporre i tuoi pasti.' : 'Personalizziamo il tuo piano.'}
+          <CardDescription className="text-slate-500 font-medium text-base">
+            {step === 1 ? 'Partiamo dalle basi. Queste informazioni ci aiuteranno a calcolare il tuo metabolismo.' : 
+             step === 2 ? 'Il peso e l\'altezza sono fondamentali per definire i tuoi obiettivi giornalieri.' :
+             step === 3 ? 'Quanto sei attivo durante la giornata? Questo influisce molto sul tuo fabbisogno.' :
+             'Aggiungi gli alimenti che usi più spesso. Risparmierai tempo registrando i pasti.'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 pb-8">
+        <CardContent className="space-y-6 pb-10 px-8">
           {step === 1 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Sesso</Label>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 ml-1">Sesso Biologico</Label>
                 <RadioGroup defaultValue={formData.gender} onValueChange={(v) => setFormData({ ...formData, gender: v as any })} className="flex gap-4">
                   <div className="flex-1">
                     <RadioGroupItem value="male" id="male" className="peer sr-only" />
-                    <Label htmlFor="male" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 cursor-pointer text-center peer-data-[state=checked]:border-nutrio-mint">Uomo</Label>
+                    <Label htmlFor="male" className="flex flex-col items-center justify-center h-20 rounded-2xl border-2 border-slate-100 bg-white p-4 cursor-pointer text-center peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all">Uomo</Label>
                   </div>
                   <div className="flex-1">
                     <RadioGroupItem value="female" id="female" className="peer sr-only" />
-                    <Label htmlFor="female" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 cursor-pointer text-center peer-data-[state=checked]:border-nutrio-mint">Donna</Label>
+                    <Label htmlFor="female" className="flex flex-col items-center justify-center h-20 rounded-2xl border-2 border-slate-100 bg-white p-4 cursor-pointer text-center peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all">Donna</Label>
                   </div>
                 </RadioGroup>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="age">Età</Label>
-                <Input id="age" type="number" value={formData.age} onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })} />
+              <div className="space-y-3">
+                <Label htmlFor="age" className="text-xs font-bold uppercase text-slate-400 ml-1">Quanti anni hai?</Label>
+                <div className="relative">
+                  <Input id="age" type="number" className="h-14 rounded-2xl pl-12 text-lg font-bold" value={formData.age} onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })} />
+                  <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={20} />
+                </div>
               </div>
             </div>
           )}
           {step === 2 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="weight">Peso (kg)</Label>
-                <Input id="weight" type="number" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: Number(e.target.value) })} />
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label htmlFor="weight" className="text-xs font-bold uppercase text-slate-400 ml-1">Peso attuale (kg)</Label>
+                <Input id="weight" type="number" className="h-14 rounded-2xl text-lg font-bold" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: Number(e.target.value) })} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="height">Altezza (cm)</Label>
-                <Input id="height" type="number" value={formData.height} onChange={(e) => setFormData({ ...formData, height: Number(e.target.value) })} />
+              <div className="space-y-3">
+                <Label htmlFor="height" className="text-xs font-bold uppercase text-slate-400 ml-1">Altezza (cm)</Label>
+                <Input id="height" type="number" className="h-14 rounded-2xl text-lg font-bold" value={formData.height} onChange={(e) => setFormData({ ...formData, height: Number(e.target.value) })} />
               </div>
             </div>
           )}
           {step === 3 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Attività</Label>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 ml-1">Livello di attività fisica</Label>
                 <Select value={formData.activityLevel.toString()} onValueChange={(v) => setFormData({ ...formData, activityLevel: Number(v) })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{ACTIVITY_LEVELS.map(l => <SelectItem key={l.value} value={l.value.toString()}>{l.label}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-14 rounded-2xl text-base font-semibold"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    {ACTIVITY_LEVELS.map(l => <SelectItem key={l.value} value={l.value.toString()} className="h-12">{l.label}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
           )}
           {step === 4 && (
             <div className="space-y-6">
-              <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
+              <div className="bg-slate-50 p-6 rounded-[2rem] space-y-5 border border-slate-100">
                 <div className="flex justify-between items-center">
-                  <Label className="font-bold">Aggiungi ingrediente</Label>
+                  <Label className="font-bold text-slate-900">Nuovo ingrediente</Label>
                   <Dialog open={isScanning} onOpenChange={setIsScanning}>
-                    <DialogTrigger asChild><Button variant="outline" size="sm" className="rounded-full"><ScanBarcode size={16} className="mr-2" /> Scanner</Button></DialogTrigger>
-                    <DialogContent className="p-0 bg-black max-w-sm"><div id="reader" className="w-full" /><Button variant="ghost" className="absolute top-4 right-4 text-white" onClick={() => setIsScanning(false)}><X /></Button></DialogContent>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-full h-10 px-5 border-primary/20 text-primary hover:bg-primary/5">
+                        <ScanBarcode size={18} className="mr-2" /> Scanner Barcode
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="p-0 bg-black max-w-sm rounded-[2rem] overflow-hidden">
+                      <div id="reader" className="w-full" />
+                      <Button variant="ghost" className="absolute top-4 right-4 text-white hover:bg-white/10" onClick={() => setIsScanning(false)}><X /></Button>
+                    </DialogContent>
                   </Dialog>
                 </div>
-                {isFetching && <div className="text-center text-nutrio-mint font-bold animate-pulse">Ricerca prodotto...</div>}
+                {isFetching && <div className="text-center text-primary font-bold animate-pulse flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} /> Ricerca prodotto...</div>}
                 <div className="grid grid-cols-2 gap-3">
-                  <Input placeholder="Nome" className="col-span-2" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
-                  <Input placeholder="kcal" type="number" value={newIngredient.calories} onChange={e => setNewIngredient({...newIngredient, calories: Number(e.target.value)})} />
-                  <Input placeholder="Prot" type="number" value={newIngredient.protein} onChange={e => setNewIngredient({...newIngredient, protein: Number(e.target.value)})} />
-                  <Input placeholder="Carb" type="number" value={newIngredient.carbs} onChange={e => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})} />
-                  <Input placeholder="Grass" type="number" value={newIngredient.fat} onChange={e => setNewIngredient({...newIngredient, fat: Number(e.target.value)})} />
+                  <Input placeholder="Nome (es. Pasta)" className="col-span-2 h-12 rounded-xl" value={newIngredient.name} onChange={e => setNewIngredient({...newIngredient, name: e.target.value})} />
+                  <Input placeholder="kcal" type="number" className="h-12 rounded-xl" value={newIngredient.calories} onChange={e => setNewIngredient({...newIngredient, calories: Number(e.target.value)})} />
+                  <Input placeholder="Pro (g)" type="number" className="h-12 rounded-xl" value={newIngredient.protein} onChange={e => setNewIngredient({...newIngredient, protein: Number(e.target.value)})} />
+                  <Input placeholder="Car (g)" type="number" className="h-12 rounded-xl" value={newIngredient.carbs} onChange={e => setNewIngredient({...newIngredient, carbs: Number(e.target.value)})} />
+                  <Input placeholder="Gra (g)" type="number" className="h-12 rounded-xl" value={newIngredient.fat} onChange={e => setNewIngredient({...newIngredient, fat: Number(e.target.value)})} />
                 </div>
-                <Button onClick={addIngredient} className="w-full bg-slate-900 text-white">Salva in Dispensa</Button>
+                <Button onClick={addIngredient} className="w-full h-12 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors">
+                  Aggiungi alla lista
+                </Button>
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-2">
+              <div className="max-h-48 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
                 {ingredients.map((ing, i) => (
-                  <div key={i} className="flex justify-between items-center p-3 border rounded-xl bg-white">
+                  <div key={i} className="flex justify-between items-center p-4 border border-slate-100 rounded-2xl bg-white shadow-sm animate-in fade-in slide-in-from-bottom-1">
                     <div>
-                      <p className="text-sm font-bold">{ing.name}</p>
-                      <p className="text-[10px] text-slate-400">{ing.calories}kcal | P:{ing.protein}g C:{ing.carbs}g G:{ing.fat}g</p>
+                      <p className="text-sm font-bold text-slate-900">{ing.name}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{ing.calories} kcal/100g · P:{ing.protein}g C:{ing.carbs}g G:{ing.fat}g</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeIngredient(i)}><Trash2 size={16} /></Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full" onClick={() => removeIngredient(i)}>
+                      <Trash2 size={18} />
+                    </Button>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          <Button className="w-full h-14 bg-nutrio-mint text-white font-bold" onClick={step < 4 ? handleNext : finish}>
-            {step < 4 ? 'Continua' : 'Completato'} <ArrowRight className="ml-2" />
+          <Button 
+            className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-black text-lg rounded-[2rem] shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] disabled:opacity-50" 
+            onClick={step < 4 ? handleNext : finish}
+            disabled={isFinishing}
+          >
+            {isFinishing ? (
+              <Loader2 className="animate-spin mr-2" />
+            ) : (
+              <>
+                {step < 4 ? 'CONTINUA' : 'CREA IL MIO PIANO'} 
+                {step < 4 && <ArrowRight className="ml-2" />}
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
