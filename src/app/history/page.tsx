@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,7 +5,7 @@ import { format, isSameDay, isValid, parseISO, addMonths, subMonths, isSameMonth
 import { it } from 'date-fns/locale';
 import { 
   Trash2, LayoutGrid, History, Utensils, Pencil, User, Zap, Menu, TrendingUp, Droplets,
-  Coffee, Sun, Moon, Apple, Calendar as CalendarIcon, ChevronRight, ChevronLeft, ChevronDown, X
+  Coffee, Sun, Moon, Apple, ChevronRight, ChevronLeft, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -90,14 +89,13 @@ export default function HistoryPage() {
   const handleDeleteMeal = (id: string) => {
     if (!user || !db) return;
     const docRef = doc(db, 'users', user.uid, 'meals', id);
-    deleteDoc(docRef)
-      .catch(async (e) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    deleteDoc(docRef).catch(async (e) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'delete',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   const handleEditMeal = (meal: any) => {
@@ -114,18 +112,16 @@ export default function HistoryPage() {
       macros: editingMeal.macros
     };
     
-    updateDoc(docRef, updateData)
-      .then(() => {
-        setIsEditModalOpen(false);
-      })
-      .catch(async (e) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: updateData,
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    updateDoc(docRef, updateData).then(() => {
+      setIsEditModalOpen(false);
+    }).catch(async (e) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'update',
+        requestResourceData: updateData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
@@ -219,7 +215,7 @@ export default function HistoryPage() {
             <Card className="xl:col-span-1 bg-white p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] border-none shadow-xl flex flex-col">
               <div className="w-full flex items-center justify-between mb-6 sm:mb-8 px-2 sm:px-0">
                 <div className="flex items-center gap-1.5 cursor-pointer">
-                  <span className="text-base sm:text-lg font-bold text-slate-900 capitalize">{currentMonth && isValid(currentMonth) ? format(currentMonth, 'MMMM yyyy', { locale: it }) : ''}</span>
+                  <span className="text-base sm:text-lg font-bold text-slate-900 capitalize">{isValid(currentMonth) ? format(currentMonth, 'MMMM yyyy', { locale: it }) : ''}</span>
                   <ChevronDown size={16} className="text-slate-400" />
                 </div>
                 <div className="flex gap-2 sm:gap-4">
@@ -251,9 +247,6 @@ export default function HistoryPage() {
                   row: "grid grid-cols-7 w-full mt-1 sm:mt-2",
                   cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
                   day: "hidden", 
-                  day_selected: "hidden", 
-                  day_today: "hidden",
-                  day_outside: "hidden",
                 }}
                 components={{
                   Day: ({ day }: any) => {
@@ -305,10 +298,6 @@ export default function HistoryPage() {
                   <div className="w-2 h-2 rounded-full bg-orange-400" />
                   <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight">Exceeded</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-slate-100" />
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight">No Entry</span>
-                </div>
               </div>
             </Card>
 
@@ -325,25 +314,16 @@ export default function HistoryPage() {
                     <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                       {selectedDate && isValid(selectedDate) ? format(selectedDate, 'EEEE, d MMMM', { locale: it }) : 'Seleziona una data'}
                     </h3>
-                    <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Riepilogo nutrizionale del giorno</p>
                   </div>
                   <div className="flex flex-col items-center sm:items-end">
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl sm:text-4xl font-black text-slate-900">{Math.round(dailyStats.calories)}</span>
                       <span className="text-xs sm:text-sm font-bold text-slate-400">kcal</span>
                     </div>
-                    <span className="text-[8px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-widest">energia totale</span>
                   </div>
                 </div>
 
                 <div className="p-6 sm:p-8 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                      <Utensils size={16} className="text-primary" /> Pasti Registrati
-                    </h4>
-                    <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">{mealsForSelectedDay.length} Voci</span>
-                  </div>
-                  
                   <div className="space-y-4">
                     {mealsForSelectedDay.map((meal: any) => (
                       <div key={meal.id} className="group flex flex-col sm:flex-row sm:items-center p-4 sm:p-5 rounded-[24px] bg-slate-50/50 hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-slate-100 gap-4">
@@ -358,13 +338,10 @@ export default function HistoryPage() {
                           <div className="flex-1 min-w-0">
                             <h5 className="font-bold text-slate-900 truncate text-sm">{meal.name}</h5>
                             <div className="flex items-center gap-2 sm:gap-3 mt-1.5 flex-wrap">
-                              <div className="flex items-center gap-1">
-                                <div className={cn("w-1.5 h-1.5 rounded-full", meal.type === 'colazione' ? 'bg-orange-400' : meal.type === 'pranzo' ? 'bg-yellow-400' : meal.type === 'cena' ? 'bg-indigo-400' : 'bg-red-400')} />
-                                <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold tracking-tight">{meal.type}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-slate-300 font-bold uppercase">
+                              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold tracking-tight">{meal.type}</span>
+                              <span className="text-[9px] sm:text-[10px] text-slate-300 font-bold uppercase">
                                 P: {meal.macros?.protein}g · C: {meal.macros?.carbs}g · G: {meal.macros?.fat}g
-                              </div>
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -372,20 +349,16 @@ export default function HistoryPage() {
                         <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-none pt-3 sm:pt-0">
                           <div className="text-left sm:text-right">
                             <p className="font-black text-lg text-slate-900 leading-none">{meal.calories}</p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">kcal</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditMeal(meal)} className="h-9 w-9 rounded-xl text-slate-300 hover:text-primary hover:bg-primary/5 sm:opacity-0 sm:group-hover:opacity-100 transition-all"><Pencil size={16} /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteMeal(meal.id)} className="h-9 w-9 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100 transition-all"><Trash2 size={16} /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditMeal(meal)} className="h-9 w-9 rounded-xl text-slate-300 hover:text-primary sm:opacity-0 sm:group-hover:opacity-100 transition-all"><Pencil size={16} /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteMeal(meal.id)} className="h-9 w-9 rounded-xl text-slate-300 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 transition-all"><Trash2 size={16} /></Button>
                           </div>
                         </div>
                       </div>
                     ))}
                     {mealsForSelectedDay.length === 0 && (
-                      <div className="text-center py-12 sm:py-16 flex flex-col items-center justify-center bg-slate-50/30 rounded-[32px] border-2 border-dashed border-slate-100">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                           <History className="text-slate-200" size={24} />
-                        </div>
+                      <div className="text-center py-12 flex flex-col items-center justify-center bg-slate-50/30 rounded-[32px] border-2 border-dashed border-slate-100">
                         <p className="text-slate-400 font-bold text-xs sm:text-sm">Nessun pasto registrato</p>
                       </div>
                     )}
@@ -415,7 +388,7 @@ export default function HistoryPage() {
                 </div>
               )}
               <DialogFooter>
-                <Button onClick={saveEditedMeal} className="w-full h-12 sm:h-14 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">Salva Modifiche</Button>
+                <Button onClick={saveEditedMeal} className="w-full h-12 bg-primary text-white font-bold rounded-2xl shadow-lg">Salva Modifiche</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -443,7 +416,7 @@ function SidebarLink({ href, icon, label, active }: { href: string, icon: React.
 
 function MacroCard({ label, value, progress, color, bgColor }: any) {
   return (
-    <Card className="p-4 sm:p-5 rounded-[24px] sm:rounded-[28px] border-none bg-white flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow">
+    <Card className="p-4 sm:p-5 rounded-[24px] sm:rounded-[28px] border-none bg-white flex flex-col justify-between shadow-sm">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <p className={cn("text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest", color)}>{label}</p>
         <div className={cn("px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold", bgColor, color)}>
