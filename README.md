@@ -25,7 +25,8 @@
 ## 📋 Prerequisiti
 
 Prima di iniziare, assicurati di avere:
-- [Node.js](https://nodejs.org/) (v18 o superiore)
+- **[Git](https://git-scm.com/)** installato sul tuo sistema.
+- [Node.js](https://nodejs.org/) (v18 o superiore).
 - Un progetto [Firebase](https://console.firebase.google.com/) attivo.
 - Una [Gemini API Key](https://aistudio.google.com/app/apikey).
 
@@ -61,7 +62,7 @@ L'app sarà disponibile all'indirizzo `http://localhost:9002`.
 
 ## 🐳 Deploy con Docker / Portainer
 
-Il progetto è già configurato per il deploy tramite container.
+Il progetto è già configurato per il deploy tramite container utilizzando l'output `standalone` di Next.js.
 
 ### Build Locale
 ```bash
