@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  smartnutrio-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartnutrio_app
+    restart: always
+    ports:
+      - "9002:3000"
+    environment:
+      - NODE_ENV=production
+      - GEMINI_API_KEY=inserisci_qui_la_tua_chiave_gemini
+    networks:
+      - nutrio-network
+
+networks:
+  nutrio-network:
+    driver: bridge
